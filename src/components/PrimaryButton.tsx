@@ -6,12 +6,14 @@ export function PrimaryButton({
   label,
   onPress,
   loading = false,
+  disabled = false,
   variant = "solid",
   style,
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
+  disabled?: boolean;
   variant?: "solid" | "ghost";
   style?: ViewStyle;
 }) {
@@ -19,11 +21,11 @@ export function PrimaryButton({
   return (
     <Pressable
       onPress={onPress}
-      disabled={loading}
+      disabled={loading || disabled}
       style={({ pressed }) => [
         styles.btn,
         isGhost ? styles.ghost : styles.solid,
-        pressed && { opacity: 0.85 },
+        (pressed || disabled) && { opacity: 0.5 },
         style,
       ]}
     >

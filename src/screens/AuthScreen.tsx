@@ -11,11 +11,20 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Signup" | "Login">;
 
 export function AuthScreen({ route }: Props) {
   const mode = route.name; // "Signup" | "Login"
-  const { signUp, signIn } = useAuth();
+  const { signUp, signIn, signInWithGoogle } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const onGooglePress = async () => {
+    setGoogleLoading(true);
+    const errorMessage = await signInWithGoogle();
+    setGoogleLoading(false);
+    // null errorMessage on a cancelled sign-in is expected — don't alert for that.
+    if (errorMessage) Alert.alert("Couldn't continue with Google", errorMessage);
+  };
 
   const onSubmit = async () => {
     if (!email || !password) {
@@ -26,9 +35,23 @@ export function AuthScreen({ route }: Props) {
     const errorMessage =
       mode === "Signup" ? await signUp(email, password, fullName) : await signIn(email, password);
     setLoading(false);
-    // On success, AuthContext's session listener automatically switches the
-    // app into the onboarding/main navigator — no manual navigation needed here.
-    if (errorMessage) Alert.alert("Couldn't continue", errorMessage);
+
+    if (errorMessage) {
+      Alert.alert("Couldn't continue", errorMessage);
+      return;
+    }
+
+    // On success with an active session, AuthContext's listener automatically
+    // switches the app into onboarding/main — no manual navigation needed.
+    // But if "Confirm email" is still on in Supabase, signUp succeeds with no
+    // session yet, and nothing would otherwise tell the user why the screen
+    // hasn't changed — so make that case visible instead of silent.
+    if (mode === "Signup") {
+      Alert.alert(
+        "Check your email",
+        "If email confirmation is enabled in your Supabase project, confirm your address before logging in. If you've disabled it for testing, you should be in the app already."
+      );
+    }
   };
 
   return (
@@ -75,6 +98,15 @@ export function AuthScreen({ route }: Props) {
         loading={loading}
         style={{ marginTop: spacing.md }}
       />
+
+      <Text style={styles.or}>OR</Text>
+
+      <PrimaryButton
+        label="Continue with Google"
+        onPress={onGooglePress}
+        loading={googleLoading}
+        variant="ghost"
+      />
     </SafeAreaView>
   );
 }
@@ -95,4 +127,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 14,
   },
+  or: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 11, marginVertical: spacing.sm },
 });
