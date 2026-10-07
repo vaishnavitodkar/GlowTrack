@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "GlowTrack",
+    "slug": "glowtrack",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#15101F",
+    "assetBundlePatterns": ["**/*"],
+    "ios": { "supportsTablet": false },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#15101F" },
+      "package": "com.glowtrack.app"
+    },
+    "plugins": ["expo-notifications"]
+  }
+}
