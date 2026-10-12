@@ -9,6 +9,7 @@ import {
   PlusJakartaSans_700Bold,
 } from "@expo-google-fonts/plus-jakarta-sans";
 import { AuthProvider } from "@/context/AuthContext";
+import { OnboardingProvider } from "@/context/OnboardingContext";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { colors } from "@/theme/tokens";
 
@@ -27,8 +28,10 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <StatusBar style="light" />
-      <RootNavigator />
+      <OnboardingProvider>
+        <StatusBar style="light" />
+        <RootNavigator />
+      </OnboardingProvider>
     </AuthProvider>
   );
 }
