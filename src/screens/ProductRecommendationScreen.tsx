@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
+import { colors, spacing, type, fonts } from "@/theme/tokens";
 import { GlassCard } from "@/components/GlassCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import { useOnboarding } from "@/context/OnboardingContext";
 
 type Product = { id: string; name: string; price: number | null; category: string; breakout_safe: boolean | null };
 
@@ -14,9 +15,9 @@ const ROUTINE_CATEGORIES = ["cleanser", "serum", "moisturizer", "sunscreen"] as 
 
 export function ProductRecommendationScreen({ navigation }: any) {
   const { session } = useAuth();
+  const { setRecommended } = useOnboarding();
   const [picks, setPicks] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -27,12 +28,16 @@ export function ProductRecommendationScreen({ navigation }: any) {
         .eq("user_id", session.user.id)
         .maybeSingle();
 
+      // "Not sure" isn't a value any product is tagged with, so filtering on it
+      // would match nothing. In that case show the best pick per category.
+      const skinType = profile?.skin_type && profile.skin_type !== "not_sure" ? profile.skin_type : null;
+
       // One query per category so every slot in the routine gets filled,
       // rather than one query that happens to return several of the same type.
       const results = await Promise.all(
         ROUTINE_CATEGORIES.map(async (category) => {
           let query = supabase.from("products").select("*").eq("category", category).limit(1);
-          if (profile?.skin_type) query = query.contains("suitable_skin_types", [profile.skin_type]);
+          if (skinType) query = query.contains("suitable_skin_types", [skinType]);
           const { data } = await query;
           return data?.[0] ?? null;
         })
@@ -41,28 +46,12 @@ export function ProductRecommendationScreen({ navigation }: any) {
       setPicks(results.filter((p): p is Product => !!p));
       setLoading(false);
     })();
-  }, [session?.user]);
+  }, [session?.user?.id]);
 
-  const onContinue = async () => {
-    if (!session?.user || !picks.length) {
-      navigation.navigate("AddExistingProducts");
-      return;
-    }
-    setSaving(true);
-
-    // Save this as the user's actual AM routine, in category order, so Home
-    // and Routine screens show these real picks instead of placeholder steps.
-    const rows = picks.map((p, i) => ({
-      user_id: session.user.id,
-      product_id: p.id,
-      routine_slot: "AM",
-      step_order: i + 1,
-      source: "recommended",
-    }));
-    const { error } = await supabase.from("user_products").insert(rows);
-
-    setSaving(false);
-    if (error) console.warn("Could not save recommended routine:", error.message);
+  // Nothing is written to the database here. The picks go into the onboarding
+  // draft, and the Routine screen's "Save & continue" saves the final routine.
+  const onContinue = () => {
+    setRecommended(picks);
     navigation.navigate("AddExistingProducts");
   };
 
@@ -75,7 +64,13 @@ export function ProductRecommendationScreen({ navigation }: any) {
 
         {loading && <Text style={styles.loading}>Finding your matches…</Text>}
 
-        {(picks.length ? picks : PLACEHOLDER).map((p) => (
+        {!loading && picks.length === 0 && (
+          <Text style={styles.loading}>
+            We couldn't find matching products yet. You can add the products you already use on the next screen.
+          </Text>
+        )}
+
+        {(loading ? PLACEHOLDER : picks).map((p) => (
           <GlassCard key={p.id} style={{ marginBottom: spacing.sm }}>
             <Text style={styles.category}>{p.category}</Text>
             <Text style={styles.name}>{p.name}</Text>
@@ -84,11 +79,12 @@ export function ProductRecommendationScreen({ navigation }: any) {
         ))}
       </ScrollView>
 
-      <PrimaryButton label="Build my routine" onPress={onContinue} loading={saving} style={{ marginTop: spacing.md }} />
+      <PrimaryButton label="Build my routine" onPress={onContinue} disabled={loading} style={{ marginTop: spacing.md }} />
     </SafeAreaView>
   );
 }
 
+// Shown only while real matches load, so the screen isn't empty.
 const PLACEHOLDER: Product[] = [
   { id: "p1", name: "Salicylic Acid Cleanser", price: 399, category: "cleanser", breakout_safe: true },
   { id: "p2", name: "Niacinamide Serum", price: 549, category: "serum", breakout_safe: true },
