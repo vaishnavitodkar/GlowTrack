@@ -20,10 +20,13 @@ export function AuthScreen({ route }: Props) {
 
   const onGooglePress = async () => {
     setGoogleLoading(true);
-    const errorMessage = await signInWithGoogle();
-    setGoogleLoading(false);
-    // null errorMessage on a cancelled sign-in is expected — don't alert for that.
-    if (errorMessage) Alert.alert("Couldn't continue with Google", errorMessage);
+    try {
+      const errorMessage = await signInWithGoogle();
+      // null errorMessage on a cancelled sign-in is expected — don't alert for that.
+      if (errorMessage) Alert.alert("Couldn't continue with Google", errorMessage);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const onSubmit = async () => {

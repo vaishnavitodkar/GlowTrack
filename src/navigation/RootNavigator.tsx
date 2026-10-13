@@ -37,7 +37,7 @@ const navTheme = {
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+    <AuthStack.Navigator screenOptions={{ headerShown: false, animation: "fade_from_bottom" }}>
       <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
       <AuthStack.Screen name="Signup" component={AuthScreen} />
       <AuthStack.Screen name="Login" component={AuthScreen} />
