@@ -19,6 +19,8 @@ import { ProgressScreen } from "@/screens/ProgressScreen";
 import { AIAdvisorScreen } from "@/screens/AIAdvisorScreen";
 import { DermatologistScreen } from "@/screens/DermatologistScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { AskAIOptionsScreen } from "@/screens/AskAIOptionsScreen";
+import { AIChatbotScreen } from "@/screens/AIChatbotScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -28,6 +30,7 @@ export type AuthStackParamList = {
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const OnboardingStack = createNativeStackNavigator();
+const AppStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
 
 const navTheme = {
@@ -45,7 +48,7 @@ function AuthNavigator() {
   );
 }
 
-function OnboardingNavigator() {
+function OnboardingNavigator({ onComplete }: { onComplete: () => void }) {
   // Full pre-Home flow, matching screens 03-07 of the Figma file.
   // Dermatologist is reachable from the AI Advisor tab later, not here.
   return (
@@ -54,25 +57,36 @@ function OnboardingNavigator() {
       <OnboardingStack.Screen name="GoalSelection" component={GoalSelectionScreen} />
       <OnboardingStack.Screen name="ProductRecommendation" component={ProductRecommendationScreen} />
       <OnboardingStack.Screen name="AddExistingProducts" component={AddExistingProductsScreen} />
-      <OnboardingStack.Screen name="Routine" component={RoutineScreen} />
+      <OnboardingStack.Screen name="Routine">
+        {(props) => <RoutineScreen {...props} onComplete={onComplete} />}
+      </OnboardingStack.Screen>
     </OnboardingStack.Navigator>
   );
 }
 
-function MainNavigator() {
-  // Matches the bottom nav from screen 08: Home | Routine | Progress | Ask AI | Profile.
-  // CheckIn and Dermatologist are reached by pushing from within a tab, not
-  // tabs themselves — add a stack wrapper per tab later if you want that.
+function MainTabsNavigator() {
+  // Five primary destinations, matching the existing screen 08 design.
   return (
     <MainTabs.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: colors.dusk, borderTopColor: colors.line } }}>
       <MainTabs.Screen name="Home" component={HomeScreen} />
       <MainTabs.Screen name="Routine" component={RoutineScreen} />
-      <MainTabs.Screen name="CheckIn" component={CheckInScreen} options={{ title: "Check-in" }} />
       <MainTabs.Screen name="Progress" component={ProgressScreen} />
-      <MainTabs.Screen name="AskAI" component={AIAdvisorScreen} options={{ title: "Ask AI" }} />
-      <MainTabs.Screen name="Dermatologist" component={DermatologistScreen} />
+      <MainTabs.Screen name="AskAI" component={AskAIOptionsScreen} options={{ title: "Ask AI" }} />
       <MainTabs.Screen name="Profile" component={ProfileScreen} />
     </MainTabs.Navigator>
+  );
+}
+
+function MainNavigator() {
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Tabs" component={MainTabsNavigator} />
+      <AppStack.Screen name="CheckIn" component={CheckInScreen} />
+      <AppStack.Screen name="Dermatologist" component={DermatologistScreen} />
+      <AppStack.Screen name="Recommendations" component={ProductRecommendationScreen} />
+      <AppStack.Screen name="AIAdvisor" component={AIAdvisorScreen} />
+      <AppStack.Screen name="AIChat" component={AIChatbotScreen} />
+    </AppStack.Navigator>
   );
 }
 
@@ -104,7 +118,7 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      {!session ? <AuthNavigator /> : onboardingDone ? <MainNavigator /> : <OnboardingNavigator />}
+      {!session ? <AuthNavigator /> : onboardingDone ? <MainNavigator /> : <OnboardingNavigator onComplete={() => setOnboardingDone(true)} />}
     </NavigationContainer>
   );
 }

@@ -18,14 +18,17 @@ export function CheckInScreen({ navigation }: any) {
   const { session } = useAuth();
   const [feeling, setFeeling] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const onSave = async () => {
-    if (!feeling || !session?.user) return;
+    if (!feeling || !session?.user || saving || saved) return;
     setSaving(true);
     const { error } = await supabase.from("skin_check_ins").insert({ user_id: session.user.id, feeling });
     setSaving(false);
     if (error) return Alert.alert("Couldn't save", error.message);
-    navigation.goBack();
+    setSaved(true);
+    Alert.alert("Check-in saved", "Your skin check-in has been recorded.");
+    navigation.navigate("Tabs", { screen: "Progress" });
   };
 
   return (
@@ -46,7 +49,7 @@ export function CheckInScreen({ navigation }: any) {
           bucket once an image picker (expo-image-picker) is wired up. */}
       <Pill label="📷 Add progress photo (optional)" onPress={() => {}} />
 
-      <PrimaryButton label="Save check-in" onPress={onSave} loading={saving} style={{ marginTop: "auto" }} />
+      <PrimaryButton label={saved ? "Saved" : "Save check-in"} onPress={onSave} loading={saving} disabled={!feeling || saved} style={{ marginTop: "auto" }} />
     </SafeAreaView>
   );
 }

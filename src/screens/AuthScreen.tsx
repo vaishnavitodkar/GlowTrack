@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Alert } from "react-native";
+import { View, Text, TextInput, StyleSheet, Alert, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
@@ -59,6 +59,7 @@ export function AuthScreen({ route }: Props) {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={[type.h1, styles.title]}>
         {mode === "Signup" ? "Create your account" : "Welcome back"}
       </Text>
@@ -98,7 +99,7 @@ export function AuthScreen({ route }: Props) {
       <PrimaryButton
         label={mode === "Signup" ? "Continue" : "Log in"}
         onPress={onSubmit}
-        loading={loading}
+        loading={loading || googleLoading}
         style={{ marginTop: spacing.md }}
       />
 
@@ -107,15 +108,17 @@ export function AuthScreen({ route }: Props) {
       <PrimaryButton
         label="Continue with Google"
         onPress={onGooglePress}
-        loading={googleLoading}
+        loading={googleLoading || loading}
         variant="ghost"
       />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.xxl },
+  content: { flexGrow: 1, justifyContent: "center", paddingBottom: spacing.lg },
   title: { marginBottom: spacing.xs },
   sub: { marginBottom: spacing.xl },
   input: {

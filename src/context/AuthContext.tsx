@@ -48,30 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return error?.message ?? null;
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const redirectTo = makeRedirectUri({ scheme: "glowtrack", path: "auth/callback" });
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo, skipBrowserRedirect: true },
-      });
-      if (error) return error.message;
-      if (!data.url) return "Supabase did not return a Google sign-in URL. Check that Google OAuth is enabled.";
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-      if (result.type === "cancel" || result.type === "dismiss") return null;
-      if (result.type !== "success") return "Google sign-in could not be completed. Please try again.";
-      const callback = new URL(result.url);
-      const code = callback.searchParams.get("code");
-      if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        return exchangeError?.message ?? null;
-      }
-      return callback.searchParams.get("error_description") ?? callback.searchParams.get("error") ?? "Google sign-in did not return an authorization code.";
-    } catch (error) {
-      return error instanceof Error ? error.message : "Google sign-in could not be completed. Please try again.";
-    }
-  };
-
   const signOut = async () => {
     await supabase.auth.signOut();
   };
