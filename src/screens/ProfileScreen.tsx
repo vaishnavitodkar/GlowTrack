@@ -4,9 +4,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
 import { useAuth } from "@/context/AuthContext";
 
-const ROWS = ["My products", "AM / PM routine", "Reminder settings", "Account settings"];
+const ROWS = ["Browse recommendations", "AM / PM routine", "Reminder settings", "Talk to a dermatologist", "Account settings"];
 
-export function ProfileScreen() {
+export function ProfileScreen({ navigation }: any) {
   const { session, signOut } = useAuth();
 
   return (
@@ -17,7 +17,11 @@ export function ProfileScreen() {
       <Text style={[type.body, styles.sub]}>{session?.user.email}</Text>
 
       {ROWS.map((label) => (
-        <Pressable key={label} style={styles.row}>
+        <Pressable key={label} style={styles.row} onPress={() => {
+          if (label === "Browse recommendations") navigation.navigate("Recommendations");
+          else if (label === "AM / PM routine" || label === "Reminder settings") navigation.navigate("Tabs", { screen: "Routine" });
+          else if (label === "Talk to a dermatologist") navigation.navigate("Dermatologist");
+        }}>
           <Text style={styles.rowLabel}>{label}</Text>
         </Pressable>
       ))}

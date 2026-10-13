@@ -14,7 +14,8 @@
     "ios": { "supportsTablet": false },
     "android": {
       "adaptiveIcon": { "backgroundColor": "#15101F" },
-      "package": "com.glowtrack.app"
+      "package": "com.glowtrack.app",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": ["expo-notifications"]
   }
