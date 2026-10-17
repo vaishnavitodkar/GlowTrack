@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "@/context/AuthContext";
-import { useOnboarding } from "@/context/OnboardingContext";
+import { supabase } from "@/lib/supabase";
 import { colors } from "@/theme/tokens";
 
 import { WelcomeScreen } from "@/screens/WelcomeScreen";
@@ -78,12 +78,29 @@ function MainNavigator() {
 
 export function RootNavigator() {
   const { session, loading } = useAuth();
-  // Onboarding status now lives in OnboardingContext, which flips to "done"
-  // the moment the Routine screen saves, so the app moves to the main tabs
-  // right away instead of waiting for the session to change.
-  const { checking, onboardingDone } = useOnboarding();
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
-  if (loading || checking) return null; // swap for a splash/loading screen
+  useEffect(() => {
+    if (!session?.user) {
+      setCheckingProfile(false);
+      return;
+    }
+    // Onboarding counts as "done" once a goal has been chosen (last step of
+    // the quiz flow before Routine). Re-checked every time session changes.
+    setCheckingProfile(true);
+    supabase
+      .from("skin_profiles")
+      .select("goal")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setOnboardingDone(!!data?.goal);
+        setCheckingProfile(false);
+      });
+  }, [session?.user]);
+
+  if (loading || checkingProfile) return null; // swap for a splash/loading screen
 
   return (
     <NavigationContainer theme={navTheme}>
