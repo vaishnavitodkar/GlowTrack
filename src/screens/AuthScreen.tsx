@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Alert, ScrollView } from "react-native";
+import { View, Text, TextInput, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
@@ -9,7 +9,7 @@ import type { AuthStackParamList } from "@/navigation/RootNavigator";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Signup" | "Login">;
 
-export function AuthScreen({ route }: Props) {
+export function AuthScreen({ route, navigation }: Props) {
   const mode = route.name; // "Signup" | "Login"
   const { signUp, signIn, signInWithGoogle } = useAuth();
   const [fullName, setFullName] = useState("");
@@ -17,13 +17,26 @@ export function AuthScreen({ route }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleStatus, setGoogleStatus] = useState<{ kind: "cancelled" | "error"; message: string } | null>(null);
 
   const onGooglePress = async () => {
+    if (googleLoading || loading) return;
+    setGoogleStatus(null);
     setGoogleLoading(true);
     try {
-      const errorMessage = await signInWithGoogle();
-      // null errorMessage on a cancelled sign-in is expected — don't alert for that.
-      if (errorMessage) Alert.alert("Couldn't continue with Google", errorMessage);
+      const result = await signInWithGoogle();
+      if (result.status === "success") {
+        Alert.alert("Signed in", "You're signed in with Google.");
+      } else if (result.status === "cancelled") {
+        setGoogleStatus({ kind: "cancelled", message: "Sign-in cancelled. You can try again whenever you're ready." });
+      } else {
+        setGoogleStatus({ kind: "error", message: result.message });
+      }
+    } catch (error) {
+      setGoogleStatus({
+        kind: "error",
+        message: error instanceof Error ? error.message : "Google sign-in could not be completed. Please try again.",
+      });
     } finally {
       setGoogleLoading(false);
     }
@@ -35,26 +48,23 @@ export function AuthScreen({ route }: Props) {
       return;
     }
     setLoading(true);
-    const errorMessage =
-      mode === "Signup" ? await signUp(email, password, fullName) : await signIn(email, password);
-    setLoading(false);
-
-    if (errorMessage) {
-      Alert.alert("Couldn't continue", errorMessage);
-      return;
-    }
-
-    // On success with an active session, AuthContext's listener automatically
-    // switches the app into onboarding/main — no manual navigation needed.
-    // But if "Confirm email" is still on in Supabase, signUp succeeds with no
-    // session yet, and nothing would otherwise tell the user why the screen
-    // hasn't changed — so make that case visible instead of silent.
-    if (mode === "Signup") {
-      Alert.alert(
-        "Check your email",
-        "If email confirmation is enabled in your Supabase project, confirm your address before logging in. If you've disabled it for testing, you should be in the app already."
-      );
-    }
+    try {
+      const errorMessage = mode === "Signup"
+        ? await signUp(email.trim(), password, fullName.trim())
+        : await signIn(email.trim(), password);
+      if (errorMessage) {
+        Alert.alert("Couldn't continue", errorMessage);
+        return;
+      }
+      if (mode === "Signup") {
+        Alert.alert(
+          "Check your email",
+          "If email confirmation is enabled in your Supabase project, confirm your address before logging in. If you've disabled it for testing, you should be in the app already."
+        );
+      }
+    } catch {
+      Alert.alert("Couldn't continue", "We couldn't reach the sign-in service. Check your connection and try again.");
+    } finally { setLoading(false); }
   };
 
   return (
@@ -96,6 +106,12 @@ export function AuthScreen({ route }: Props) {
         onChangeText={setPassword}
       />
 
+      {mode === "Login" ? (
+        <Pressable accessibilityRole="button" onPress={() => navigation.navigate("ForgotPassword")} style={styles.forgotLink}>
+          <Text style={styles.forgotText}>Forgot Password?</Text>
+        </Pressable>
+      ) : null}
+
       <PrimaryButton
         label={mode === "Signup" ? "Continue" : "Log in"}
         onPress={onSubmit}
@@ -111,6 +127,11 @@ export function AuthScreen({ route }: Props) {
         loading={googleLoading || loading}
         variant="ghost"
       />
+      {googleStatus ? (
+        <Text accessibilityRole={googleStatus.kind === "error" ? "alert" : undefined} style={[styles.googleStatus, googleStatus.kind === "error" && styles.googleError]}>
+          {googleStatus.message}
+        </Text>
+      ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -134,4 +155,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   or: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 11, marginVertical: spacing.sm },
+  googleStatus: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginTop: spacing.sm },
+  googleError: { color: colors.danger },
+  forgotLink: { alignSelf: "flex-end", minHeight: 40, justifyContent: "center", paddingHorizontal: spacing.xs },
+  forgotText: { color: colors.gold, fontFamily: fonts.bodyMedium, fontSize: 12 },
 });

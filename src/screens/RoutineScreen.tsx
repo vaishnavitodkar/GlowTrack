@@ -6,17 +6,22 @@ import * as Notifications from "expo-notifications";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, fonts, radii, spacing, type } from "@/theme/tokens";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { AnimatedFlower } from "@/components/AnimatedFlower";
+import { FadeInUp } from "@/components/FadeInUp";
+import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { getLocalDateKey } from "@/lib/localDate";
 
 type Slot = "AM" | "PM";
+type ProductTiming = Slot | "Both";
 type RoutineProduct = {
   id: string;
   product_id: string | null;
   custom_name: string | null;
+  custom_category: string | null;
   usage_instructions: string | null;
-  routine_slot: Slot;
+  routine_slot: ProductTiming;
   step_order: number;
   source: string | null;
   products: { name: string; category: string; description: string | null }[] | { name: string; category: string; description: string | null } | null;
@@ -110,7 +115,7 @@ export function RoutineScreen({ navigation, onComplete }: any) {
     const [productResult, preferenceResult, completionResult] = await Promise.all([
       supabase
         .from("user_products")
-        .select("id, product_id, custom_name, usage_instructions, routine_slot, step_order, source, products(name, category, description)")
+        .select("id, product_id, custom_name, custom_category, usage_instructions, routine_slot, step_order, source, products(name, category, description)")
         .eq("user_id", session.user.id)
         .or("source.is.null,source.in.(manual,recommendation_accepted)")
         .order("step_order"),
@@ -121,16 +126,16 @@ export function RoutineScreen({ navigation, onComplete }: any) {
         .maybeSingle(),
       supabase
         .from("routine_step_completions")
-        .select("user_product_id")
+        .select("user_product_id, routine_slot")
         .eq("user_id", session.user.id)
         .eq("completion_date", today),
     ]);
     if (productResult.error) setLoadError(`Couldn't load your products: ${productResult.error.message}`);
-    setProducts((productResult.data ?? []) as unknown as RoutineProduct[]);
+    else setProducts((productResult.data ?? []) as unknown as RoutineProduct[]);
     if (completionResult.error) {
       setLoadError((current) => current ?? `Couldn't load today's completion status: ${completionResult.error.message}`);
     }
-    setCompleted(new Set((completionResult.data ?? []).map((row) => row.user_product_id)));
+    setCompleted(new Set((completionResult.data ?? []).map((row) => `${row.user_product_id}:${row.routine_slot}`)));
     if (preferenceResult.error && preferenceResult.error.code !== "PGRST116") {
       setLoadError((current) => current ?? `Couldn't load reminder settings: ${preferenceResult.error.message}`);
     } else if (preferenceResult.data) {
@@ -147,38 +152,45 @@ export function RoutineScreen({ navigation, onComplete }: any) {
     return () => subscription.remove();
   }, [load]));
 
-  const displayedProducts = products.filter((product) => product.routine_slot === tab);
+  const displayedProducts = products
+    .filter((product) => product.routine_slot === tab || product.routine_slot === "Both")
+    .sort((left, right) => {
+      const order: Record<string, number> = { cleanser: 0, serum: 1, moisturizer: 2, sunscreen: 3 };
+      const leftCategory = (left.custom_category ?? (Array.isArray(left.products) ? left.products[0]?.category : left.products?.category) ?? "other").toLowerCase();
+      const rightCategory = (right.custom_category ?? (Array.isArray(right.products) ? right.products[0]?.category : right.products?.category) ?? "other").toLowerCase();
+      return (order[leftCategory] ?? 4) - (order[rightCategory] ?? 4) || left.step_order - right.step_order;
+    });
   const getCatalogProduct = (product: RoutineProduct) => Array.isArray(product.products) ? product.products[0] : product.products;
-  const categories = new Set(displayedProducts.map((product) => getCatalogProduct(product)?.category).filter(Boolean));
-  const requiredCategories = tab === "AM"
-    ? ["cleanser", "serum", "moisturizer", "sunscreen"]
-    : ["cleanser", "treatment", "moisturizer"];
+  const categories = new Set(displayedProducts.map((product) => (product.custom_category ?? getCatalogProduct(product)?.category)?.toLowerCase()).filter(Boolean));
+  const requiredCategories = tab === "AM" ? ["cleanser", "serum", "moisturizer", "sunscreen"] : ["cleanser", "serum", "moisturizer"];
   const missing = requiredCategories.filter((category) => !categories.has(category));
 
   const toggleCompletion = async (product: RoutineProduct) => {
-    if (!session?.user || pending.has(product.id)) return;
-    const wasComplete = completed.has(product.id);
+    const completionKey = `${product.id}:${tab}`;
+    if (!session?.user || pending.has(completionKey)) return;
+    const wasComplete = completed.has(completionKey);
     const next = new Set(completed);
-    wasComplete ? next.delete(product.id) : next.add(product.id);
+    wasComplete ? next.delete(completionKey) : next.add(completionKey);
     setCompleted(next);
-    setPending((current) => new Set(current).add(product.id));
+    setPending((current) => new Set(current).add(completionKey));
     try {
       const today = getLocalDateKey();
       const { error } = await supabase.rpc("set_routine_step_completion", {
         p_user_product_id: product.id,
         p_completion_date: today,
         p_completed: !wasComplete,
+        p_routine_slot: tab,
       });
       if (error) throw error;
     } catch (error) {
       setCompleted((current) => {
         const reverted = new Set(current);
-        wasComplete ? reverted.add(product.id) : reverted.delete(product.id);
+        wasComplete ? reverted.add(completionKey) : reverted.delete(completionKey);
         return reverted;
       });
       Alert.alert("Couldn't save completion", error instanceof Error ? error.message : "Please try again.");
     } finally {
-      setPending((current) => { const nextPending = new Set(current); nextPending.delete(product.id); return nextPending; });
+      setPending((current) => { const nextPending = new Set(current); nextPending.delete(completionKey); return nextPending; });
     }
   };
 
@@ -247,6 +259,8 @@ export function RoutineScreen({ navigation, onComplete }: any) {
   const finish = () => {
     if (onComplete) onComplete();
     else if (navigation?.getState?.()?.routeNames?.includes("Home")) navigation.navigate("Home");
+    else if (navigation?.getState?.()?.routeNames?.includes("Tabs")) navigation.navigate("Tabs", { screen: "Routine" });
+    else navigation?.goBack?.();
   };
 
   const openRecommendations = () => {
@@ -270,32 +284,36 @@ export function RoutineScreen({ navigation, onComplete }: any) {
           ))}
         </View>
 
-        {loading ? <Text style={styles.note}>Loading your products…</Text> : null}
-        {loadError ? <Text accessibilityRole="alert" style={styles.error}>{loadError}</Text> : null}
-        {!loading && displayedProducts.length === 0 ? (
+        {loading ? <View style={styles.loading}><AnimatedFlower size={82} /><Text style={styles.note}>Loading your products…</Text><ProductSkeleton count={3} /></View> : null}
+        {loadError ? <><Text accessibilityRole="alert" style={styles.error}>{loadError}</Text><PrimaryButton label="Retry" variant="ghost" onPress={() => { void load(); }} /></> : null}
+        {!loading && !loadError && displayedProducts.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.note}>No products have been added to your {tab} routine yet.</Text>
+            <Text style={styles.note}>Missing steps: {missing.join(", ")}.</Text>
             <PrimaryButton label="Recommend Products" variant="ghost" onPress={openRecommendations} style={{ marginTop: spacing.sm }} />
           </View>
-        ) : displayedProducts.map((product, index) => (
+        ) : products.length > 0 ? <FadeInUp key={tab} style={styles.routineList}>{displayedProducts.map((product) => {
+          const completionKey = `${product.id}:${tab}`;
+          const isComplete = completed.has(completionKey);
+          return (
           <View key={product.id} style={styles.step}>
             <Pressable
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: completed.has(product.id), disabled: pending.has(product.id) }}
-              accessibilityLabel={`Mark ${product.custom_name || getCatalogProduct(product)?.name || "routine step"} ${completed.has(product.id) ? "incomplete" : "complete"}`}
-              disabled={pending.has(product.id)}
+              accessibilityState={{ checked: isComplete, disabled: pending.has(completionKey) }}
+              accessibilityLabel={`Mark ${product.custom_name || getCatalogProduct(product)?.name || "routine step"} ${isComplete ? "incomplete" : "complete"} for ${tab}`}
+              disabled={pending.has(completionKey)}
               onPress={() => { void toggleCompletion(product); }}
-              style={[styles.checkbox, completed.has(product.id) && styles.checkboxDone]}
+              style={[styles.checkbox, isComplete && styles.checkboxDone]}
             >
-              {pending.has(product.id) ? <ActivityIndicator size="small" color={colors.gold} /> : completed.has(product.id) ? <Text style={styles.checkmark}>✓</Text> : null}
+              {pending.has(completionKey) ? <ActivityIndicator size="small" color={colors.gold} /> : isComplete ? <Text style={styles.checkmark}>✓</Text> : null}
             </Pressable>
             <View style={styles.stepCopy}>
-              <Text style={[styles.stepLabel, completed.has(product.id) && styles.stepLabelDone]}>{product.custom_name || getCatalogProduct(product)?.name || "Skincare product"}</Text>
-              {getCatalogProduct(product)?.category ? <Text style={styles.category}>{getCatalogProduct(product)?.category}</Text> : null}
+              <Text style={[styles.stepLabel, isComplete && styles.stepLabelDone]}>{product.custom_name || getCatalogProduct(product)?.name || "Skincare product"}</Text>
+              {product.custom_category || getCatalogProduct(product)?.category ? <Text style={styles.category}>{product.custom_category ?? getCatalogProduct(product)?.category}</Text> : null}
               {product.usage_instructions || getCatalogProduct(product)?.description ? <Text style={styles.note}>{product.usage_instructions || getCatalogProduct(product)?.description}</Text> : null}
             </View>
           </View>
-        ))}
+        );})}</FadeInUp> : null}
         {!loading && displayedProducts.length > 0 && missing.length > 0 ? (
           <Text style={styles.note}>Missing steps: {missing.join(", ")}. Add products only if you want to.</Text>
         ) : null}
@@ -383,6 +401,8 @@ const styles = StyleSheet.create({
   stepLabelDone: { color: colors.inkSoft, textDecorationLine: "line-through" },
   category: { fontFamily: fonts.bodyBold, fontSize: 10, color: colors.gold, textTransform: "uppercase", marginTop: 2 },
   note: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, lineHeight: 18 },
+  loading: { alignItems: "center", paddingVertical: spacing.md, gap: spacing.xs },
+  routineList: { width: "100%" },
   error: { fontFamily: fonts.body, fontSize: 12, color: colors.danger, marginVertical: spacing.sm },
   empty: { padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.glass },
   reminderHeading: { marginTop: spacing.xl, marginBottom: spacing.xs },
