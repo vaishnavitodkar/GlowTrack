@@ -13,7 +13,8 @@ type AuthContextValue = {
   loading: boolean;
   recoveryStatus: "none" | "pending" | "invalid";
   clearPasswordRecovery: () => void;
-  signUp: (email: string, password: string, fullName: string) => Promise<string | null>;
+  signUp: (email: string, password: string, fullName: string) => Promise<SignUpResult>;
+  resendSignupConfirmation: (email: string) => Promise<string | null>;
   signIn: (email: string, password: string) => Promise<string | null>;
   signInWithGoogle: () => Promise<GoogleSignInResult>;
   signOut: () => Promise<void>;
@@ -22,6 +23,11 @@ type AuthContextValue = {
 export type GoogleSignInResult =
   | { status: "success" }
   | { status: "cancelled" }
+  | { status: "error"; message: string };
+
+export type SignUpResult =
+  | { status: "authenticated" }
+  | { status: "confirmation_required" }
   | { status: "error"; message: string };
 
 function googleOAuthErrorMessage(message: string, redirectTo: string) {
@@ -90,11 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearPasswordRecovery = () => setRecoveryStatus("none");
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName } }, // feeds the handle_new_user() trigger
     });
+    if (error) return { status: "error", message: error.message } as const;
+    if (!data.user) return { status: "error", message: "We couldn't confirm that signup was created. Try logging in or submit the form again." } as const;
+    return data.session ? { status: "authenticated" } as const : { status: "confirmation_required" } as const;
+  };
+
+  const resendSignupConfirmation = async (email: string) => {
+    const { error } = await supabase.auth.resend({ type: "signup", email });
     return error?.message ?? null;
   };
 
@@ -166,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, loading, recoveryStatus, clearPasswordRecovery, signUp, signIn, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ session, loading, recoveryStatus, clearPasswordRecovery, signUp, resendSignupConfirmation, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );

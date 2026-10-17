@@ -91,7 +91,7 @@ async function scheduleReminder(slot: "am" | "pm", value: string) {
   });
 }
 
-export function RoutineScreen({ navigation, onComplete }: any) {
+export function RoutineScreen({ navigation, onComplete, route }: any) {
   const { session } = useAuth();
   const [tab, setTab] = useState<Slot>("AM");
   const [products, setProducts] = useState<RoutineProduct[]>([]);
@@ -102,15 +102,18 @@ export function RoutineScreen({ navigation, onComplete }: any) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<Set<string>>(new Set());
+  const previewProducts = (route?.params?.previewProducts ?? []) as RoutineProduct[];
+  const demoMode = Boolean(route?.params?.demoMode);
 
   const load = useCallback(async () => {
     if (!session?.user) {
-      setProducts([]);
+      setProducts(previewProducts);
       setLoading(false);
       return;
     }
     setLoading(true);
     setLoadError(null);
+    try {
     const today = getLocalDateKey();
     const [productResult, preferenceResult, completionResult] = await Promise.all([
       supabase
@@ -130,8 +133,8 @@ export function RoutineScreen({ navigation, onComplete }: any) {
         .eq("user_id", session.user.id)
         .eq("completion_date", today),
     ]);
-    if (productResult.error) setLoadError(`Couldn't load your products: ${productResult.error.message}`);
-    else setProducts((productResult.data ?? []) as unknown as RoutineProduct[]);
+    if (productResult.error) { setLoadError(`Couldn't load your products: ${productResult.error.message}`); setProducts(previewProducts); }
+    else setProducts([...(productResult.data ?? []) as unknown as RoutineProduct[], ...previewProducts]);
     if (completionResult.error) {
       setLoadError((current) => current ?? `Couldn't load today's completion status: ${completionResult.error.message}`);
     }
@@ -141,8 +144,13 @@ export function RoutineScreen({ navigation, onComplete }: any) {
     } else if (preferenceResult.data) {
       setPreferences({ ...DEFAULT_PREFERENCES, ...preferenceResult.data });
     }
-    setLoading(false);
-  }, [session?.user]);
+    } catch (error) {
+      setLoadError(`Couldn't load your routine data: ${error instanceof Error ? error.message : "Check your connection and try again."}`);
+      setProducts(previewProducts);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user, route?.params?.previewProducts]);
 
   useFocusEffect(useCallback(() => {
     void load();
@@ -166,6 +174,7 @@ export function RoutineScreen({ navigation, onComplete }: any) {
   const missing = requiredCategories.filter((category) => !categories.has(category));
 
   const toggleCompletion = async (product: RoutineProduct) => {
+    if (product.source === "demo-preview") return;
     const completionKey = `${product.id}:${tab}`;
     if (!session?.user || pending.has(completionKey)) return;
     const wasComplete = completed.has(completionKey);
@@ -275,6 +284,13 @@ export function RoutineScreen({ navigation, onComplete }: any) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={type.label}>Your plan</Text>
         <Text style={[type.h1, styles.title]}>A routine you'll keep</Text>
+        {previewProducts.length ? <View style={styles.previewBanner}>
+          <Text style={styles.previewTitle}>{demoMode ? "Demo routine · preview only" : "Recommendation preview · not saved"}</Text>
+          <Text style={styles.note}>{demoMode ? "These sample products are local examples. They have not been added to your account." : "Selected suggestions are temporary. Add a product from Recommendations to save it."}</Text>
+          <Pressable accessibilityRole="button" onPress={() => navigation.setParams?.({ previewProducts: [], demoMode: false })}>
+            <Text style={styles.previewLink}>Switch back to my products</Text>
+          </Pressable>
+        </View> : null}
 
         <View style={styles.tabs}>
           {(["AM", "PM"] as const).map((value) => (
@@ -301,7 +317,7 @@ export function RoutineScreen({ navigation, onComplete }: any) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: isComplete, disabled: pending.has(completionKey) }}
               accessibilityLabel={`Mark ${product.custom_name || getCatalogProduct(product)?.name || "routine step"} ${isComplete ? "incomplete" : "complete"} for ${tab}`}
-              disabled={pending.has(completionKey)}
+              disabled={pending.has(completionKey) || product.source === "demo-preview"}
               onPress={() => { void toggleCompletion(product); }}
               style={[styles.checkbox, isComplete && styles.checkboxDone]}
             >
@@ -311,6 +327,8 @@ export function RoutineScreen({ navigation, onComplete }: any) {
               <Text style={[styles.stepLabel, isComplete && styles.stepLabelDone]}>{product.custom_name || getCatalogProduct(product)?.name || "Skincare product"}</Text>
               {product.custom_category || getCatalogProduct(product)?.category ? <Text style={styles.category}>{product.custom_category ?? getCatalogProduct(product)?.category}</Text> : null}
               {product.usage_instructions || getCatalogProduct(product)?.description ? <Text style={styles.note}>{product.usage_instructions || getCatalogProduct(product)?.description}</Text> : null}
+              {product.source === "demo-preview" ? <Text style={styles.previewTag}>Preview only · not saved</Text> : null}
+              {product.source !== "demo-preview" ? <Text style={styles.sourceTag}>{product.source === "recommendation_accepted" ? "Saved recommendation" : "My product"}</Text> : null}
             </View>
           </View>
         );})}</FadeInUp> : null}
@@ -387,6 +405,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.xxl },
   content: { paddingBottom: spacing.md },
   title: { marginBottom: spacing.lg },
+  previewBanner: { padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.gold, marginBottom: spacing.md, gap: spacing.xs },
+  previewTitle: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 12 },
+  previewLink: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 11, paddingTop: spacing.xs },
+  previewTag: { fontFamily: fonts.bodyMedium, color: colors.gold, fontSize: 9, marginTop: 3 },
+  sourceTag: { fontFamily: fonts.bodyMedium, color: colors.inkSoft, fontSize: 9, marginTop: 3 },
   tabs: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.md },
   tab: { flex: 1, alignItems: "center", paddingVertical: spacing.sm, borderRadius: radii.sm, backgroundColor: colors.glass },
   tabOn: { backgroundColor: colors.rose },

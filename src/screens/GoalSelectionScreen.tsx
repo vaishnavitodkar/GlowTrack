@@ -41,6 +41,7 @@ export function GoalSelectionScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.screen}>
+      <Pressable accessibilityRole="button" onPress={() => navigation.canGoBack?.() && navigation.goBack()} style={styles.backButton}><Text style={styles.backText}>‹  Back</Text></Pressable>
       <Text style={[type.h1, styles.title]}>What would you like help with?</Text>
       <Text style={[type.body, styles.sub]}>We'll shape GlowTrack around what matters to you</Text>
 
@@ -66,6 +67,8 @@ export function GoalSelectionScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.xxl },
+  backButton: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingRight: spacing.md, marginBottom: spacing.sm },
+  backText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 13 },
   title: { marginBottom: spacing.xs },
   sub: { marginBottom: spacing.xl },
   card: {
