@@ -22,7 +22,14 @@ export function GoalSelectionScreen({ navigation }: any) {
   const onContinue = async () => {
     if (!goal || !session?.user) return;
     setSaving(true);
-    const { error } = await supabase.from("skin_profiles").upsert({ user_id: session.user.id, goal });
+    const { data: profiles, error: lookupError } = await supabase.from("skin_profiles").select("user_id").eq("user_id", session.user.id);
+    if (lookupError || !profiles?.length) {
+      setSaving(false);
+      return Alert.alert("Couldn't save", lookupError?.message ?? "Your assessment profile wasn't found. Please try again.");
+    }
+    // Update the existing profile rows; never create another parent profile.
+    // A guarded migration consolidates legacy duplicates into one canonical row.
+    const { error } = await supabase.from("skin_profiles").update({ goal }).eq("user_id", session.user.id);
     setSaving(false);
     if (error) return Alert.alert("Couldn't save", error.message);
 
