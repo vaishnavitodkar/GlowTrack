@@ -11,13 +11,14 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Signup" | "Login">;
 
 export function AuthScreen({ route, navigation }: Props) {
   const mode = route.name; // "Signup" | "Login"
-  const { signUp, signIn, signInWithGoogle } = useAuth();
+  const { signUp, resendSignupConfirmation, signIn, signInWithGoogle } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleStatus, setGoogleStatus] = useState<{ kind: "cancelled" | "error"; message: string } | null>(null);
+  const [confirmationPending, setConfirmationPending] = useState(false);
 
   const onGooglePress = async () => {
     if (googleLoading || loading) return;
@@ -48,19 +49,15 @@ export function AuthScreen({ route, navigation }: Props) {
       return;
     }
     setLoading(true);
+    setConfirmationPending(false);
     try {
-      const errorMessage = mode === "Signup"
-        ? await signUp(email.trim(), password, fullName.trim())
-        : await signIn(email.trim(), password);
-      if (errorMessage) {
-        Alert.alert("Couldn't continue", errorMessage);
-        return;
-      }
       if (mode === "Signup") {
-        Alert.alert(
-          "Check your email",
-          "If email confirmation is enabled in your Supabase project, confirm your address before logging in. If you've disabled it for testing, you should be in the app already."
-        );
+        const result = await signUp(email.trim(), password, fullName.trim());
+        if (result.status === "error") { Alert.alert("Couldn't create your account", result.message); return; }
+        if (result.status === "confirmation_required") setConfirmationPending(true);
+      } else {
+        const errorMessage = await signIn(email.trim(), password);
+        if (errorMessage) Alert.alert("Couldn't continue", errorMessage);
       }
     } catch {
       Alert.alert("Couldn't continue", "We couldn't reach the sign-in service. Check your connection and try again.");
@@ -78,6 +75,20 @@ export function AuthScreen({ route, navigation }: Props) {
           ? "Your routine, products and progress — all in one calm place."
           : "Log in to pick up where you left off."}
       </Text>
+
+      {confirmationPending ? <View style={styles.confirmation}>
+        <Text style={styles.confirmationTitle}>Check your inbox</Text>
+        <Text style={styles.googleStatus}>Supabase requires email confirmation for this account. Use the link sent to {email.trim()} to finish signing up.</Text>
+        <Pressable accessibilityRole="button" disabled={loading} onPress={async () => {
+          setLoading(true);
+          try {
+            const error = await resendSignupConfirmation(email.trim());
+            Alert.alert(error ? "Couldn't resend the email" : "Email sent", error ?? "A new confirmation link is on its way.");
+          } catch {
+            Alert.alert("Couldn't resend the email", "Check your connection and try again.");
+          } finally { setLoading(false); }
+        }} style={styles.forgotLink}><Text style={styles.forgotText}>Resend confirmation email</Text></Pressable>
+      </View> : null}
 
       {mode === "Signup" && (
         <TextInput
@@ -157,6 +168,8 @@ const styles = StyleSheet.create({
   or: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 11, marginVertical: spacing.sm },
   googleStatus: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 12, lineHeight: 18, marginTop: spacing.sm },
   googleError: { color: colors.danger },
+  confirmation: { padding: spacing.md, marginBottom: spacing.md, borderRadius: radii.md, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.line },
+  confirmationTitle: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 14, marginBottom: spacing.xs },
   forgotLink: { alignSelf: "flex-end", minHeight: 40, justifyContent: "center", paddingHorizontal: spacing.xs },
   forgotText: { color: colors.gold, fontFamily: fonts.bodyMedium, fontSize: 12 },
 });

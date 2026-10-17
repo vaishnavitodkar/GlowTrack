@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, fonts, spacing, type } from "@/theme/tokens";
 import { GlassCard } from "@/components/GlassCard";
@@ -9,6 +9,7 @@ import { FadeInUp } from "@/components/FadeInUp";
 import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
+import type { DemoRoutineProduct } from "@/lib/demoProducts";
 
 type Product = {
   id: string;
@@ -30,6 +31,8 @@ export function ProductRecommendationScreen({ navigation }: any) {
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [addedTiming, setAddedTiming] = useState<Record<string, RoutineSlot>>({});
+  const [selectedTiming, setSelectedTiming] = useState<Record<string, RoutineSlot>>({});
+  const [previewPicks, setPreviewPicks] = useState<Record<string, DemoRoutineProduct>>({});
   const [profileReason, setProfileReason] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const saveLock = useRef(false);
@@ -143,9 +146,33 @@ export function ProductRecommendationScreen({ navigation }: any) {
     else navigation.navigate("Routine");
   };
 
+  const togglePreviewProduct = (product: Product) => {
+    const timing = selectedTiming[product.id] ?? (product.category === "sunscreen" ? "AM" : "Both");
+    const preview: DemoRoutineProduct = {
+      id: `preview-${product.id}`, product_id: product.id, custom_name: product.name,
+      custom_category: product.category, usage_instructions: product.description ?? "",
+      routine_slot: timing, step_order: 5, source: "demo-preview", products: null,
+    };
+    setPreviewPicks((current) => {
+      const next = { ...current };
+      if (next[product.id]) delete next[product.id];
+      else next[product.id] = preview;
+      return next;
+    });
+  };
+
+  const openPreview = () => {
+    const previewProducts = Object.values(previewPicks);
+    if (!previewProducts.length) return;
+    const names: string[] = navigation?.getState?.()?.routeNames ?? [];
+    if (names.includes("Routine")) navigation.navigate("Routine", { previewProducts, demoMode: false });
+    else navigation.navigate("Tabs", { screen: "Routine", params: { previewProducts, demoMode: false } });
+  };
+
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Pressable accessibilityRole="button" onPress={() => navigation.canGoBack?.() ? navigation.goBack() : onContinue()} style={styles.backButton}><Text style={styles.backText}>‹  Back</Text></Pressable>
         <Text style={type.label}>Optional suggestions</Text>
         <Text style={[type.h1, styles.title]}>Recommended products</Text>
         <Text style={[type.body, styles.sub]}>Choose a cleanser, serum, moisturizer, and sunscreen for AM, PM, or both. Recommendations stay optional; you can add products you already own too.</Text>
@@ -162,16 +189,22 @@ export function ProductRecommendationScreen({ navigation }: any) {
               {product.description ? <Text style={styles.note}>{product.description}</Text> : null}
               <Text style={styles.meta}>{product.price == null ? "Price unavailable" : `₹${product.price}`}{product.breakout_safe ? " · Breakout-safe" : ""}</Text>
               <Text style={styles.reason}>{profileReason}</Text>
-              {addedTiming[product.id] ? <FadeInUp key={`added:${product.id}`}><Text accessibilityRole="text" style={styles.added}>✓ Added to {addedTiming[product.id] === "Both" ? "AM + PM" : addedTiming[product.id]}</Text></FadeInUp> : <View style={styles.actions}>
-                {(["AM", "PM", "Both"] as const).map((slot) => (
-                  <PrimaryButton key={slot} label={slot === "Both" ? "Both" : slot} variant="ghost" loading={savingKey === `${product.id}:${slot}`} disabled={savingKey !== null} onPress={() => { void addToRoutine(product, slot); }} style={styles.action} />
-                ))}
-              </View>}
+              {addedTiming[product.id] ? <FadeInUp key={`added:${product.id}`}><Text accessibilityRole="text" style={styles.added}>✓ Added to {addedTiming[product.id] === "Both" ? "AM + PM" : addedTiming[product.id]}</Text></FadeInUp> : <>
+                <View style={styles.actions}>{(["AM", "PM", "Both"] as const).map((slot) => <PrimaryButton key={slot} label={slot} variant="ghost" disabled={savingKey !== null} onPress={() => {
+                  setSelectedTiming((current) => ({ ...current, [product.id]: slot }));
+                  setPreviewPicks((current) => current[product.id] ? { ...current, [product.id]: { ...current[product.id], routine_slot: slot } } : current);
+                }} style={{ ...styles.action, borderColor: (selectedTiming[product.id] ?? (product.category === "sunscreen" ? "AM" : "Both")) === slot ? colors.gold : colors.line }} />)}</View>
+                <View style={styles.actions}>
+                  <PrimaryButton label={`Add ${selectedTiming[product.id] ?? (product.category === "sunscreen" ? "AM" : "Both")} to my products`} loading={savingKey?.startsWith(`${product.id}:`)} disabled={savingKey !== null} onPress={() => { void addToRoutine(product, selectedTiming[product.id] ?? (product.category === "sunscreen" ? "AM" : "Both")); }} style={styles.action} />
+                  <PrimaryButton label={previewPicks[product.id] ? "Selected for preview" : "Add to preview"} variant="ghost" disabled={savingKey !== null} onPress={() => togglePreviewProduct(product)} style={styles.action} />
+                </View>
+              </>}
             </> : <Text style={styles.note}>No suggestion available · add a product you own instead.</Text>}
           </GlassCard></FadeInUp>;
         })}
       </ScrollView>
-      <PrimaryButton label="Add my own products" variant="ghost" onPress={onContinue} style={{ marginTop: spacing.md }} />
+      {Object.keys(previewPicks).length ? <PrimaryButton label={`Preview ${Object.keys(previewPicks).length} selected product${Object.keys(previewPicks).length === 1 ? "" : "s"} only`} variant="ghost" onPress={openPreview} style={{ marginTop: spacing.sm }} /> : null}
+      <PrimaryButton label={routeNames.includes("AddExistingProducts") ? "Add my own products" : "Back to my routine"} variant="ghost" onPress={onContinue} style={{ marginTop: spacing.md }} />
     </SafeAreaView>
   );
 }
@@ -191,4 +224,6 @@ const styles = StyleSheet.create({
   meta: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: spacing.xs },
   actions: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm },
   action: { flex: 1 },
+  backButton: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingRight: spacing.md, marginBottom: spacing.sm },
+  backText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 13 },
 });
