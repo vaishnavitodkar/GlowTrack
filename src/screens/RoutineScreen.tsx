@@ -102,12 +102,10 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [pending, setPending] = useState<Set<string>>(new Set());
-  const previewProducts = (route?.params?.previewProducts ?? []) as RoutineProduct[];
-  const demoMode = Boolean(route?.params?.demoMode);
 
   const load = useCallback(async () => {
     if (!session?.user) {
-      setProducts(previewProducts);
+      setProducts([]);
       setLoading(false);
       return;
     }
@@ -133,8 +131,8 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
         .eq("user_id", session.user.id)
         .eq("completion_date", today),
     ]);
-    if (productResult.error) { setLoadError(`Couldn't load your products: ${productResult.error.message}`); setProducts(previewProducts); }
-    else setProducts([...(productResult.data ?? []) as unknown as RoutineProduct[], ...previewProducts]);
+    if (productResult.error) { setLoadError(`Couldn't load your products: ${productResult.error.message}`); setProducts([]); }
+    else setProducts((productResult.data ?? []) as unknown as RoutineProduct[]);
     if (completionResult.error) {
       setLoadError((current) => current ?? `Couldn't load today's completion status: ${completionResult.error.message}`);
     }
@@ -146,11 +144,11 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
     }
     } catch (error) {
       setLoadError(`Couldn't load your routine data: ${error instanceof Error ? error.message : "Check your connection and try again."}`);
-      setProducts(previewProducts);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [session?.user, route?.params?.previewProducts]);
+  }, [session?.user]);
 
   useFocusEffect(useCallback(() => {
     void load();
@@ -174,7 +172,6 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
   const missing = requiredCategories.filter((category) => !categories.has(category));
 
   const toggleCompletion = async (product: RoutineProduct) => {
-    if (product.source === "demo-preview") return;
     const completionKey = `${product.id}:${tab}`;
     if (!session?.user || pending.has(completionKey)) return;
     const wasComplete = completed.has(completionKey);
@@ -276,7 +273,15 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
     const names: string[] = navigation?.getState?.()?.routeNames ?? [];
     if (names.includes("Recommendations")) navigation.navigate("Recommendations");
     else if (names.includes("ProductRecommendation")) navigation.navigate("ProductRecommendation");
+    else if (navigation.getParent?.()?.getState?.()?.routeNames?.includes("Recommendations")) navigation.getParent().navigate("Recommendations");
     else Alert.alert("Recommendations unavailable", "Open recommendations from your product shelf.");
+  };
+  const openManualProducts = () => {
+    const names: string[] = navigation?.getState?.()?.routeNames ?? [];
+    if (names.includes("AddExistingProducts")) navigation.navigate("AddExistingProducts");
+    else if (names.includes("Products")) navigation.navigate("Products");
+    else if (navigation.getParent?.()?.getState?.()?.routeNames?.includes("Products")) navigation.getParent().navigate("Products");
+    else Alert.alert("Product shelf unavailable", "Open your product shelf from your profile.");
   };
 
   return (
@@ -284,13 +289,6 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={type.label}>Your plan</Text>
         <Text style={[type.h1, styles.title]}>A routine you'll keep</Text>
-        {previewProducts.length ? <View style={styles.previewBanner}>
-          <Text style={styles.previewTitle}>{demoMode ? "Demo routine · preview only" : "Recommendation preview · not saved"}</Text>
-          <Text style={styles.note}>{demoMode ? "These sample products are local examples. They have not been added to your account." : "Selected suggestions are temporary. Add a product from Recommendations to save it."}</Text>
-          <Pressable accessibilityRole="button" onPress={() => navigation.setParams?.({ previewProducts: [], demoMode: false })}>
-            <Text style={styles.previewLink}>Switch back to my products</Text>
-          </Pressable>
-        </View> : null}
 
         <View style={styles.tabs}>
           {(["AM", "PM"] as const).map((value) => (
@@ -307,6 +305,7 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
             <Text style={styles.note}>No products have been added to your {tab} routine yet.</Text>
             <Text style={styles.note}>Missing steps: {missing.join(", ")}.</Text>
             <PrimaryButton label="Recommend Products" variant="ghost" onPress={openRecommendations} style={{ marginTop: spacing.sm }} />
+            <PrimaryButton label="Add My Own Products" variant="ghost" onPress={openManualProducts} style={{ marginTop: spacing.xs }} />
           </View>
         ) : products.length > 0 ? <FadeInUp key={tab} style={styles.routineList}>{displayedProducts.map((product) => {
           const completionKey = `${product.id}:${tab}`;
@@ -317,7 +316,7 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: isComplete, disabled: pending.has(completionKey) }}
               accessibilityLabel={`Mark ${product.custom_name || getCatalogProduct(product)?.name || "routine step"} ${isComplete ? "incomplete" : "complete"} for ${tab}`}
-              disabled={pending.has(completionKey) || product.source === "demo-preview"}
+              disabled={pending.has(completionKey)}
               onPress={() => { void toggleCompletion(product); }}
               style={[styles.checkbox, isComplete && styles.checkboxDone]}
             >
@@ -327,8 +326,7 @@ export function RoutineScreen({ navigation, onComplete, route }: any) {
               <Text style={[styles.stepLabel, isComplete && styles.stepLabelDone]}>{product.custom_name || getCatalogProduct(product)?.name || "Skincare product"}</Text>
               {product.custom_category || getCatalogProduct(product)?.category ? <Text style={styles.category}>{product.custom_category ?? getCatalogProduct(product)?.category}</Text> : null}
               {product.usage_instructions || getCatalogProduct(product)?.description ? <Text style={styles.note}>{product.usage_instructions || getCatalogProduct(product)?.description}</Text> : null}
-              {product.source === "demo-preview" ? <Text style={styles.previewTag}>Preview only · not saved</Text> : null}
-              {product.source !== "demo-preview" ? <Text style={styles.sourceTag}>{product.source === "recommendation_accepted" ? "Saved recommendation" : "My product"}</Text> : null}
+              <Text style={styles.sourceTag}>{product.source === "recommendation_accepted" ? "Saved recommendation" : "My product"}</Text>
             </View>
           </View>
         );})}</FadeInUp> : null}

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { makeRedirectUri } from "expo-auth-session";
 import { colors, fonts, radii, spacing, type } from "@/theme/tokens";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -13,6 +13,7 @@ export function ForgotPasswordScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const requestReset = async () => {
     if (loading) return;
@@ -31,8 +32,9 @@ export function ForgotPasswordScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
         <Pressable accessibilityRole="button" accessibilityLabel="Back to login" onPress={() => navigation.goBack()} hitSlop={12}>
           <Text style={styles.back}>‹  Back</Text>
         </Pressable>
@@ -43,18 +45,21 @@ export function ForgotPasswordScreen({ navigation }: any) {
             style={styles.input} placeholder="Email address" placeholderTextColor={colors.inkSoft}
             autoCapitalize="none" autoComplete="email" keyboardType="email-address" textContentType="emailAddress"
             accessibilityLabel="Email address" value={email} onChangeText={(value) => { setEmail(value); setError(null); }}
+            returnKeyType="send" onSubmitEditing={() => { Keyboard.dismiss(); void requestReset(); }}
           />
           {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
           <PrimaryButton label="Send reset link" onPress={() => { void requestReset(); }} loading={loading} disabled={loading} style={styles.button} />
         </> : <View style={styles.sentCard}><Text style={styles.sentText}>For security, this confirmation is the same whether or not the address is registered. Open the email link on this device to choose a new password.</Text></View>}
         <Pressable accessibilityRole="button" onPress={() => navigation.navigate("Login")} style={styles.loginLink}><Text style={styles.loginText}>{sent ? "Return to login" : "Back to login"}</Text></Pressable>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.lg },
+  keyboard: { flex: 1 },
   content: { flexGrow: 1, justifyContent: "center", paddingBottom: spacing.xl },
   back: { color: colors.gold, fontFamily: fonts.bodyMedium, fontSize: 13, marginBottom: spacing.xxl },
   title: { marginBottom: spacing.sm }, subtitle: { marginBottom: spacing.xl },

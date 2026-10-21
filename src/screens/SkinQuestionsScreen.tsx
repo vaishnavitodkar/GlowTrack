@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Alert, Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, fonts, radii, spacing, type } from "@/theme/tokens";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -92,6 +92,19 @@ export function SkinQuestionsScreen({ navigation }: any) {
     if (busy.current) return;
     if (!valid) { setError("Choose an answer to continue."); return; }
     if (step < STEPS.length - 1) { goTo(step + 1); return; }
+    Alert.alert(
+      "Submit your skin assessment?",
+      "Please confirm that your answers are correct. We'll use them to personalize your skincare recommendations.",
+      [
+        { text: "Review Answers", style: "cancel" },
+        { text: "Yes, Submit", onPress: () => { void submitAssessment(); } },
+      ],
+      { cancelable: true },
+    );
+  };
+
+  const submitAssessment = async () => {
+    if (busy.current) return;
     if (!session?.user) { setError("Please sign in again to save your assessment."); return; }
     busy.current = true; setSaving(true); setError(null);
     try {

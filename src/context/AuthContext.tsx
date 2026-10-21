@@ -4,7 +4,7 @@ import type { Session } from "@supabase/supabase-js";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseAuthTarget, supabase } from "@/lib/supabase";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -101,7 +101,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password,
       options: { data: { full_name: fullName } }, // feeds the handle_new_user() trigger
     });
-    if (error) return { status: "error", message: error.message } as const;
+    if (error) {
+      const isNetworkFailure = /fetch failed|failed to fetch|network request failed/i.test(error.message);
+      if (__DEV__) {
+        const target = getSupabaseAuthTarget();
+        console.warn("[GlowTrack Auth] Signup request failed", {
+          kind: isNetworkFailure ? "network" : "auth",
+          errorName: error.name,
+          status: error.status,
+          host: target.host,
+          port: target.port,
+          endpoint: target.endpoint,
+        });
+      }
+      const message = isNetworkFailure
+        ? `Can't reach Supabase Auth at ${getSupabaseAuthTarget().host}:${getSupabaseAuthTarget().port}. Confirm the configured Supabase service is running and reachable from this device.`
+        : error.message;
+      return { status: "error", message } as const;
+    }
     if (!data.user) return { status: "error", message: "We couldn't confirm that signup was created. Try logging in or submit the form again." } as const;
     return data.session ? { status: "authenticated" } as const : { status: "confirmation_required" } as const;
   };
@@ -175,7 +192,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   return (

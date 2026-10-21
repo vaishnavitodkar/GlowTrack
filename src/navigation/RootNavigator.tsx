@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { NavigationContainer, DarkTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -26,6 +26,7 @@ import { DermatologistScreen } from "@/screens/DermatologistScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { AskAIOptionsScreen } from "@/screens/AskAIOptionsScreen";
 import { AIChatbotScreen } from "@/screens/AIChatbotScreen";
+import { AccountSettingsScreen } from "@/screens/AccountSettingsScreen";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { spacing, type as textStyles } from "@/theme/tokens";
 
@@ -77,9 +78,19 @@ function OnboardingNavigator({ onComplete }: { onComplete: () => void }) {
 }
 
 function MainTabsNavigator() {
+  const insets = useSafeAreaInsets();
+  const iconFor: Record<string, string> = { Home: "⌂", Routine: "◷", Progress: "▥", AskAI: "✦", Profile: "●" };
   // Five primary destinations, matching the existing screen 08 design.
   return (
-    <MainTabs.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: colors.dusk, borderTopColor: colors.line } }}>
+    <MainTabs.Navigator screenOptions={({ route }) => ({
+      headerShown: false,
+      tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18, lineHeight: 21 }}>{iconFor[route.name] ?? "•"}</Text>,
+      tabBarActiveTintColor: colors.gold,
+      tabBarInactiveTintColor: colors.inkSoft,
+      tabBarLabelStyle: { fontFamily: fonts.bodyMedium, fontSize: 9, marginBottom: 2 },
+      tabBarStyle: { backgroundColor: colors.dusk, borderTopColor: colors.line, height: 54 + insets.bottom, paddingTop: 5, paddingBottom: Math.max(5, insets.bottom) },
+      tabBarHideOnKeyboard: true,
+    })}>
       <MainTabs.Screen name="Home" component={HomeScreen} />
       <MainTabs.Screen name="Routine" component={RoutineScreen} />
       <MainTabs.Screen name="Progress" component={ProgressScreen} />
@@ -100,6 +111,7 @@ function MainNavigator({ initialRouteName }: { initialRouteName: "Tabs" | "Produ
       <AppStack.Screen name="Recommendations" component={ProductRecommendationScreen} />
       <AppStack.Screen name="AIAdvisor" component={AIAdvisorScreen} />
       <AppStack.Screen name="AIChat" component={AIChatbotScreen} />
+      <AppStack.Screen name="AccountSettings" component={AccountSettingsScreen} />
     </AppStack.Navigator>
   );
 }

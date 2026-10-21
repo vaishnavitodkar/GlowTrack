@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, Alert, ScrollView, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useRef, useState } from "react";
+import { View, Text, TextInput, StyleSheet, Alert, ScrollView, Pressable, KeyboardAvoidingView, Keyboard, Platform } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -12,6 +12,9 @@ type Props = NativeStackScreenProps<AuthStackParamList, "Signup" | "Login">;
 export function AuthScreen({ route, navigation }: Props) {
   const mode = route.name; // "Signup" | "Login"
   const { signUp, resendSignupConfirmation, signIn, signInWithGoogle } = useAuth();
+  const insets = useSafeAreaInsets();
+  const emailInput = useRef<TextInput>(null);
+  const passwordInput = useRef<TextInput>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -65,8 +68,9 @@ export function AuthScreen({ route, navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView style={styles.keyboard} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
       <Text style={[type.h1, styles.title]}>
         {mode === "Signup" ? "Create your account" : "Welcome back"}
       </Text>
@@ -97,9 +101,12 @@ export function AuthScreen({ route, navigation }: Props) {
           placeholderTextColor={colors.inkSoft}
           value={fullName}
           onChangeText={setFullName}
+          returnKeyType="next"
+          onSubmitEditing={() => emailInput.current?.focus()}
         />
       )}
       <TextInput
+        ref={emailInput}
         style={styles.input}
         placeholder="Email address"
         placeholderTextColor={colors.inkSoft}
@@ -107,14 +114,19 @@ export function AuthScreen({ route, navigation }: Props) {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        returnKeyType="next"
+        onSubmitEditing={() => passwordInput.current?.focus()}
       />
       <TextInput
+        ref={passwordInput}
         style={styles.input}
         placeholder="Password"
         placeholderTextColor={colors.inkSoft}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+        returnKeyType="done"
+        onSubmitEditing={() => { Keyboard.dismiss(); void onSubmit(); }}
       />
 
       {mode === "Login" ? (
@@ -144,12 +156,14 @@ export function AuthScreen({ route, navigation }: Props) {
         </Text>
       ) : null}
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.xxl },
+  keyboard: { flex: 1 },
   content: { flexGrow: 1, justifyContent: "center", paddingBottom: spacing.lg },
   title: { marginBottom: spacing.xs },
   sub: { marginBottom: spacing.xl },

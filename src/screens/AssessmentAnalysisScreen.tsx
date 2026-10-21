@@ -77,12 +77,16 @@ export function AssessmentAnalysisScreen({ navigation, route }: any) {
       <View style={styles.copy}>
         <Text style={styles.eyebrow}>{ready ? "PROFILE READY" : "A MOMENT FOR YOU"}</Text>
         <Text style={[type.h1, styles.title]}>{ready ? "Your profile is ready" : "Putting your profile together"}</Text>
-        <Text style={styles.body}>{ready ? "Your answers are saved. Next, add the products you already own and shape a routine that feels right for you." : "We're saving your answers and organizing your preferences for your GlowTrack experience."}</Text>
+        <Text style={styles.body}>{ready ? "Your answers are saved. Choose evidence-based suggestions or add the products you already own." : "We're saving your answers and organizing your preferences for your GlowTrack experience."}</Text>
         <View style={styles.status}><View style={[styles.statusDot, ready && styles.statusDotReady]} /><Text accessibilityLiveRegion="polite" style={styles.statusText}>{ready ? "Your skin profile is ready!" : MESSAGES[messageIndex]}</Text></View>
         {!ready ? <View style={styles.track}><Animated.View style={[styles.trackFill, { width: progressWidth }]} /></View> : null}
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
-      <PrimaryButton label="View Products" onPress={() => { void viewProducts(); }} loading={checkingProducts} disabled={!ready} style={styles.cta} />
+      <PrimaryButton label="View Recommended Products" onPress={() => {
+        const names: string[] = navigation?.getState?.()?.routeNames ?? [];
+        navigation.navigate(names.includes("ProductRecommendation") ? "ProductRecommendation" : "Recommendations");
+      }} loading={!ready} disabled={!ready || checkingProducts} style={styles.cta} />
+      <PrimaryButton label="Add Your Own Products" variant="ghost" onPress={() => { void viewProducts(); }} loading={checkingProducts} disabled={!ready} style={styles.secondaryCta} />
       <Text style={styles.footnote}>A personalized profile, made from the answers you shared.</Text>
     </SafeAreaView>
   );
@@ -96,5 +100,5 @@ const styles = StyleSheet.create({
   sparkleOne: { position: "absolute", top: "25%", left: "18%", width: 7, height: 7, borderRadius: 4, backgroundColor: "#D0B5E2" }, sparkleTwo: { position: "absolute", top: "31%", right: "17%", width: 5, height: 5, borderRadius: 3, backgroundColor: "#D5B16F" }, sparkleThree: { position: "absolute", bottom: "24%", right: "24%", width: 8, height: 8, borderRadius: 4, backgroundColor: "#C6A5DC" },
   copy: { alignItems: "center", paddingBottom: spacing.md }, eyebrow: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1.5, color: "#8054A6", marginBottom: spacing.sm }, title: { textAlign: "center", color: "#251C2D", fontSize: 29, marginBottom: spacing.sm }, body: { fontFamily: fonts.body, color: "#766C7F", fontSize: 13, textAlign: "center", lineHeight: 21, maxWidth: 330 },
   status: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: spacing.lg, minHeight: 20 }, statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#A98BC0" }, statusDotReady: { backgroundColor: "#7A9A75" }, statusText: { color: "#6F6378", fontFamily: fonts.bodyMedium, fontSize: 11 }, track: { width: 150, height: 3, borderRadius: 2, backgroundColor: "#E9E2ED", marginTop: spacing.md, overflow: "hidden" }, trackFill: { height: "100%", width: "100%", backgroundColor: "#8054A6" }, error: { color: colors.danger, fontFamily: fonts.body, fontSize: 11, textAlign: "center", marginTop: spacing.sm },
-  cta: { backgroundColor: "#8054A6", minHeight: 54, borderRadius: radii.md }, footnote: { textAlign: "center", color: "#9A909F", fontFamily: fonts.body, fontSize: 10, marginTop: spacing.sm },
+  cta: { backgroundColor: "#8054A6", minHeight: 54, borderRadius: radii.md }, secondaryCta: { marginTop: spacing.xs }, footnote: { textAlign: "center", color: "#9A909F", fontFamily: fonts.body, fontSize: 10, marginTop: spacing.sm },
 });
