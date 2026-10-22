@@ -14,13 +14,15 @@ export function GlassCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.glass,
+    backgroundColor: colors.dusk,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radii.lg,
     padding: spacing.lg,
-    // Note: true backdrop-blur isn't supported on React Native views directly.
-    // For a real frosted-glass effect, wrap children in expo-blur's <BlurView>
-    // once you're ready — this flat version matches the look closely for now.
+    shadowColor: colors.shadow,
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
 });

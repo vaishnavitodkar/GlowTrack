@@ -1,5 +1,14 @@
 .env
+.env.supabase-secrets
+.env.ollama.local
 .env.example
 node_modules
 package-lock.json
 .expo
+# Supabase local generated files
+supabase/.temp/
+supabase/.branches/
+
+# Python cache
+__pycache__/
+*.pyc

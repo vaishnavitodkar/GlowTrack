@@ -77,24 +77,28 @@ export function AssessmentAnalysisScreen({ navigation, route }: any) {
       <View style={styles.copy}>
         <Text style={styles.eyebrow}>{ready ? "PROFILE READY" : "A MOMENT FOR YOU"}</Text>
         <Text style={[type.h1, styles.title]}>{ready ? "Your profile is ready" : "Putting your profile together"}</Text>
-        <Text style={styles.body}>{ready ? "Your answers are saved. Next, add the products you already own and shape a routine that feels right for you." : "We're saving your answers and organizing your preferences for your GlowTrack experience."}</Text>
+        <Text style={styles.body}>{ready ? "Your answers are saved. Choose evidence-based suggestions or add the products you already own." : "We're saving your answers and organizing your preferences for your GlowTrack experience."}</Text>
         <View style={styles.status}><View style={[styles.statusDot, ready && styles.statusDotReady]} /><Text accessibilityLiveRegion="polite" style={styles.statusText}>{ready ? "Your skin profile is ready!" : MESSAGES[messageIndex]}</Text></View>
         {!ready ? <View style={styles.track}><Animated.View style={[styles.trackFill, { width: progressWidth }]} /></View> : null}
         {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </View>
-      <PrimaryButton label="View Products" onPress={() => { void viewProducts(); }} loading={checkingProducts} disabled={!ready} style={styles.cta} />
+      <PrimaryButton label="View Recommended Products" onPress={() => {
+        const names: string[] = navigation?.getState?.()?.routeNames ?? [];
+        navigation.navigate(names.includes("ProductRecommendation") ? "ProductRecommendation" : "Recommendations");
+      }} loading={!ready} disabled={!ready || checkingProducts} style={styles.cta} />
+      <PrimaryButton label="Add Your Own Products" variant="ghost" onPress={() => { void viewProducts(); }} loading={checkingProducts} disabled={!ready} style={styles.secondaryCta} />
       <Text style={styles.footnote}>A personalized profile, made from the answers you shared.</Text>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#FBF9FC", paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  top: { alignItems: "center", gap: 6 }, brand: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 2, color: "#8054A6" }, step: { fontFamily: fonts.body, fontSize: 9, letterSpacing: 1.5, color: "#A398AD" },
-  visualArea: { flex: 1, minHeight: 230, alignItems: "center", justifyContent: "center" }, halo: { position: "absolute", width: 210, height: 210, borderRadius: 105, backgroundColor: "#EADFF2" },
-  flowerOuter: { width: 150, height: 150, alignItems: "center", justifyContent: "center" }, petal: { position: "absolute", width: 35, height: 68, borderRadius: 22, backgroundColor: "#9067B2", opacity: 0.92 }, flowerCore: { position: "absolute", width: 44, height: 44, borderRadius: 22, backgroundColor: "#F4D9A5", alignItems: "center", justifyContent: "center" }, coreDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#8054A6" },
-  sparkleOne: { position: "absolute", top: "25%", left: "18%", width: 7, height: 7, borderRadius: 4, backgroundColor: "#D0B5E2" }, sparkleTwo: { position: "absolute", top: "31%", right: "17%", width: 5, height: 5, borderRadius: 3, backgroundColor: "#D5B16F" }, sparkleThree: { position: "absolute", bottom: "24%", right: "24%", width: 8, height: 8, borderRadius: 4, backgroundColor: "#C6A5DC" },
-  copy: { alignItems: "center", paddingBottom: spacing.md }, eyebrow: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1.5, color: "#8054A6", marginBottom: spacing.sm }, title: { textAlign: "center", color: "#251C2D", fontSize: 29, marginBottom: spacing.sm }, body: { fontFamily: fonts.body, color: "#766C7F", fontSize: 13, textAlign: "center", lineHeight: 21, maxWidth: 330 },
-  status: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: spacing.lg, minHeight: 20 }, statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#A98BC0" }, statusDotReady: { backgroundColor: "#7A9A75" }, statusText: { color: "#6F6378", fontFamily: fonts.bodyMedium, fontSize: 11 }, track: { width: 150, height: 3, borderRadius: 2, backgroundColor: "#E9E2ED", marginTop: spacing.md, overflow: "hidden" }, trackFill: { height: "100%", width: "100%", backgroundColor: "#8054A6" }, error: { color: colors.danger, fontFamily: fonts.body, fontSize: 11, textAlign: "center", marginTop: spacing.sm },
-  cta: { backgroundColor: "#8054A6", minHeight: 54, borderRadius: radii.md }, footnote: { textAlign: "center", color: "#9A909F", fontFamily: fonts.body, fontSize: 10, marginTop: spacing.sm },
+  screen: { flex: 1, backgroundColor: colors.plum, paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  top: { alignItems: "center", gap: 6 }, brand: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 2, color: colors.rose }, step: { fontFamily: fonts.body, fontSize: 9, letterSpacing: 1.5, color: colors.inkSoft },
+  visualArea: { flex: 1, minHeight: 230, alignItems: "center", justifyContent: "center" }, halo: { position: "absolute", width: 210, height: 210, borderRadius: 105, backgroundColor: colors.accentTint },
+  flowerOuter: { width: 150, height: 150, alignItems: "center", justifyContent: "center" }, petal: { position: "absolute", width: 35, height: 68, borderRadius: 22, backgroundColor: colors.rose, opacity: 0.92 }, flowerCore: { position: "absolute", width: 44, height: 44, borderRadius: 22, backgroundColor: colors.beige, alignItems: "center", justifyContent: "center" }, coreDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.rose },
+  sparkleOne: { position: "absolute", top: "25%", left: "18%", width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accentTint }, sparkleTwo: { position: "absolute", top: "31%", right: "17%", width: 5, height: 5, borderRadius: 3, backgroundColor: colors.gold }, sparkleThree: { position: "absolute", bottom: "24%", right: "24%", width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accentTint },
+  copy: { alignItems: "center", paddingBottom: spacing.md }, eyebrow: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 1.5, color: colors.rose, marginBottom: spacing.sm }, title: { textAlign: "center", color: colors.ink, fontSize: 29, marginBottom: spacing.sm }, body: { fontFamily: fonts.body, color: colors.inkSoft, fontSize: 13, textAlign: "center", lineHeight: 21, maxWidth: 330 },
+  status: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: spacing.lg, minHeight: 20 }, statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.rose }, statusDotReady: { backgroundColor: colors.rose }, statusText: { color: colors.inkSoft, fontFamily: fonts.bodyMedium, fontSize: 11 }, track: { width: 150, height: 3, borderRadius: 2, backgroundColor: colors.beige, marginTop: spacing.md, overflow: "hidden" }, trackFill: { height: "100%", width: "100%", backgroundColor: colors.rose }, error: { color: colors.danger, fontFamily: fonts.body, fontSize: 11, textAlign: "center", marginTop: spacing.sm },
+  cta: { backgroundColor: colors.rose, minHeight: 54, borderRadius: radii.md }, secondaryCta: { marginTop: spacing.xs }, footnote: { textAlign: "center", color: colors.inkSoft, fontFamily: fonts.body, fontSize: 10, marginTop: spacing.sm },
 });

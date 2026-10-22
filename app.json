@@ -17,6 +17,9 @@
       "package": "com.glowtrack.app",
       "softwareKeyboardLayoutMode": "resize"
     },
-    "plugins": ["expo-notifications"]
+    "plugins": [
+      "expo-notifications",
+      ["expo-image-picker", { "photosPermission": "Allow GlowTrack to choose a private progress photo from your library." }]
+    ]
   }
 }

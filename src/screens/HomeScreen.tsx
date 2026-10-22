@@ -77,7 +77,7 @@ export function HomeScreen({ navigation }: any) {
           <Text style={type.label}>Streak</Text>
           <Text style={styles.stat}>🔥 {streak} days</Text>
         </GlassCard>
-        <GlassCard style={{ flex: 1, backgroundColor: "rgba(206,140,150,0.12)" }}>
+        <GlassCard style={{ flex: 1, backgroundColor: colors.accentTint }}>
           <Text style={[type.label, { color: colors.rose }]}>Today · AM</Text>
           <Text style={styles.stat}>{completedToday.size}/{steps.length}</Text>
         </GlassCard>

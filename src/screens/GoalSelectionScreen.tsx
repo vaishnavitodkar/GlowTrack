@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.line, backgroundColor: colors.glass,
     borderRadius: radii.lg, padding: spacing.lg, marginBottom: spacing.sm,
   },
-  cardSelected: { borderColor: colors.rose, backgroundColor: "rgba(206,140,150,0.14)" },
+  cardSelected: { borderColor: colors.rose, backgroundColor: colors.accentTint },
   icon: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.gold, alignItems: "center", justifyContent: "center" },
   cardTitle: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.ink },
   cardSub: { fontFamily: fonts.body, fontSize: 12, color: colors.inkSoft, marginTop: 2 },

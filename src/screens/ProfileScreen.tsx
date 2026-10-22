@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Alert, Text, StyleSheet, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing, radii, type, fonts } from "@/theme/tokens";
 import { useAuth } from "@/context/AuthContext";
@@ -19,14 +19,22 @@ export function ProfileScreen({ navigation }: any) {
       {ROWS.map((label) => (
         <Pressable key={label} style={styles.row} onPress={() => {
           if (label === "Browse recommendations") navigation.navigate("Recommendations");
-          else if (label === "AM / PM routine" || label === "Reminder settings") navigation.navigate("Tabs", { screen: "Routine" });
+          else if (label === "AM / PM routine") navigation.navigate("Tabs", { screen: "Routine" });
+          else if (label === "Reminder settings") Alert.alert("Reminder settings", "Reminder preferences are not available yet. You can review your AM / PM routine here.", [
+            { text: "Close", style: "cancel" },
+            { text: "Open routine", onPress: () => navigation.navigate("Tabs", { screen: "Routine" }) },
+          ]);
           else if (label === "Talk to a dermatologist") navigation.navigate("Dermatologist");
+          else if (label === "Account settings") navigation.navigate("AccountSettings");
         }}>
           <Text style={styles.rowLabel}>{label}</Text>
         </Pressable>
       ))}
 
-      <Pressable style={[styles.row, styles.logout]} onPress={signOut}>
+      <Pressable style={[styles.row, styles.logout]} onPress={() => Alert.alert("Log out?", "You can sign back in at any time.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log out", style: "destructive", onPress: () => { void signOut().catch(() => Alert.alert("Couldn't log out", "Check your connection and try again.")); } },
+      ])}>
         <Text style={[styles.rowLabel, { color: colors.danger }]}>Log out</Text>
       </Pressable>
     </SafeAreaView>

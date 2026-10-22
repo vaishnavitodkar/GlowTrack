@@ -1,21 +1,24 @@
-// Design tokens — matches the editorial dark system from the Figma design
-// direction doc (midnight plum base, dusty rose + champagne gold accents).
-// Keep every screen's colors/spacing/fonts pulled from here, never hardcoded,
-// so the whole app stays consistent and themeable from one place.
+// GlowTrack's warm, editorial skincare palette. Keep shared UI colors here so
+// screens use the same cream, sage, and ink surfaces consistently.
 
 export const colors = {
-  plum: "#15101F",       // app background
-  dusk: "#201A2E",       // card / screen surface
-  rose: "#CE8C96",       // primary actions
-  roseDeep: "#A85F6C",
-  gold: "#E3C58A",       // streaks, selected states, highlights
-  goldDeep: "#B8974F",
-  ink: "#F3EEF2",        // primary text
-  inkSoft: "#A79CB0",    // secondary text
-  line: "rgba(255,255,255,0.08)",
-  glass: "rgba(255,255,255,0.045)",
+  plum: "#F7F5EF",       // warm ivory app background
+  dusk: "#FFFEFA",       // soft card surface
+  rose: "#5D6B53",       // muted sage primary actions
+  roseDeep: "#485740",
+  gold: "#5F7154",       // olive accents and selected states
+  goldDeep: "#4E6045",
+  ink: "#30332D",        // readable, warm charcoal text
+  inkSoft: "#6E7067",    // secondary text
+  line: "rgba(62,65,54,0.14)",
+  glass: "rgba(255,255,255,0.76)",
+  accentTint: "#E9EDE5",
+  beige: "#F0ECE2",
+  inkWash: "rgba(48,51,45,0.42)",
+  inkFaint: "rgba(48,51,45,0.24)",
+  shadow: "#555A4B",
   white: "#FFFFFF",
-  danger: "#E08585",
+  danger: "#A8443D",
 };
 
 export const spacing = {

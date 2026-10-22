@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { FadeInUp } from "@/components/FadeInUp";
 import { Pill } from "@/components/Pill";
 import { PrimaryButton } from "@/components/PrimaryButton";
@@ -9,7 +9,6 @@ import { ProductSkeleton } from "@/components/ProductSkeleton";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { colors, fonts, radii, spacing, type } from "@/theme/tokens";
-import { DEMO_PRODUCTS } from "@/lib/demoProducts";
 
 type Slot = "AM" | "PM" | "Both";
 type Category = "cleanser" | "serum" | "moisturizer" | "sunscreen" | "other";
@@ -54,9 +53,10 @@ export function AddExistingProductsScreen({ navigation }: any) {
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
   const loadRequest = useRef(0);
-  const [selectedDemo, setSelectedDemo] = useState<Record<string, boolean>>({});
-  const [demoTimings, setDemoTimings] = useState<Record<string, Slot>>(() => Object.fromEntries(DEMO_PRODUCTS.map((product) => [product.id, product.routine_slot])));
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
   const allowLeaveRef = useRef(false);
+  const insets = useSafeAreaInsets();
   const editingProduct = useMemo(() => products.find((product) => product.id === editingId) ?? null, [editingId, products]);
   const hasUnsavedProduct = showAddForm && (editingProduct
     ? newSlot !== editingProduct.routine_slot
@@ -107,14 +107,18 @@ export function AddExistingProductsScreen({ navigation }: any) {
   }, [loadProducts, loadAttempt]));
 
   const openAdd = (category: Category) => {
+    const startingNewForm = !showAddForm || editingId !== null;
     setEditingId(null);
-    setNewName("");
-    setNewInstructions("");
+    if (startingNewForm) {
+      setNewName("");
+      setNewInstructions("");
+      setOtherCategory("");
+      setNewSlot(category === "sunscreen" ? "AM" : null);
+    } else if (!newSlot && category === "sunscreen") setNewSlot("AM");
     setNewCategory(category);
-    setOtherCategory("");
-    setNewSlot(category === "sunscreen" ? "AM" : null);
     setFormError(null);
     setShowAddForm(true);
+    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: Math.max(0, formY.current - spacing.md), animated: true }));
   };
   const openEdit = (product: OwnedProduct) => {
     setEditingId(product.id);
@@ -173,18 +177,11 @@ export function AddExistingProductsScreen({ navigation }: any) {
     if (navigation.canGoBack?.()) navigation.goBack();
     else navigation.navigate("Tabs", { screen: "Home" });
   };
-  const previewSelectedDemo = () => {
-    const previewProducts = DEMO_PRODUCTS
-      .filter((product) => selectedDemo[product.id])
-      .map((product) => ({ ...product, routine_slot: demoTimings[product.id] ?? product.routine_slot }));
-    if (!previewProducts.length) return;
-    const names: string[] = navigation?.getState?.()?.routeNames ?? [];
-    if (names.includes("Routine")) navigation.navigate("Routine", { previewProducts, demoMode: true });
-    else navigation.navigate("Tabs", { screen: "Routine", params: { previewProducts, demoMode: true } });
-  };
+
 
   return <SafeAreaView style={styles.screen}>
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}>
+    <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
       <Pressable accessibilityRole="button" onPress={goBack} style={styles.backButton}><Text style={styles.backText}>‹  Back</Text></Pressable>
       <Text style={type.label}>Your shelf</Text>
       <Text style={[type.h1, styles.title]}>Add my products</Text>
@@ -206,7 +203,7 @@ export function AddExistingProductsScreen({ navigation }: any) {
           <PrimaryButton label="Retry" variant="ghost" onPress={() => setLoadAttempt((attempt) => attempt + 1)} />
         </View> : products.length === 0 ? <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No personal products yet</Text>
-          <Text style={styles.emptyText}>Add products you already own, or select samples below to preview a routine.</Text>
+          <Text style={styles.emptyText}>Add products you already own, or ask GlowTrack for source-backed recommendations.</Text>
         </View> : <>
           <Text style={[type.label, styles.sectionLabel]}>My products · {products.length}</Text>
           {products.map((product, index) => <FadeInUp key={product.id} delay={index * 35} style={styles.productRow}>
@@ -217,22 +214,14 @@ export function AddExistingProductsScreen({ navigation }: any) {
         </>}
       </View>
 
-      <View style={styles.section}>
-        <Text style={[type.label, styles.sectionLabel]}>Section B · Suggested Products</Text>
-        <Text style={styles.sectionDescription}>Sample products for exploring the routine builder. These are examples, not verified commercial recommendations, and are never saved as yours.</Text>
-        {DEMO_PRODUCTS.map((product) => <View key={product.id} style={styles.demoRow}>
-          <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: !!selectedDemo[product.id] }} onPress={() => setSelectedDemo((current) => ({ ...current, [product.id]: !current[product.id] }))} style={[styles.demoCheck, selectedDemo[product.id] && styles.demoCheckOn]}>
-            {selectedDemo[product.id] ? <Text style={styles.demoCheckMark}>✓</Text> : null}
-          </Pressable>
-          <View style={styles.demoCopy}><Text style={styles.productName}>{product.custom_name}</Text><Text style={styles.productMeta}>Sample {product.custom_category} · suggested</Text>
-            <View style={styles.demoTiming}>{(["AM", "PM", "Both"] as const).map((slot) => <Pressable key={slot} accessibilityRole="radio" accessibilityState={{ selected: (demoTimings[product.id] ?? product.routine_slot) === slot }} onPress={() => setDemoTimings((current) => ({ ...current, [product.id]: slot }))} style={[styles.demoTimingChoice, (demoTimings[product.id] ?? product.routine_slot) === slot && styles.demoTimingChoiceOn]}><Text style={[styles.demoTimingText, (demoTimings[product.id] ?? product.routine_slot) === slot && styles.demoTimingTextOn]}>{slot}</Text></Pressable>)}</View>
-          </View>
-        </View>)}
-        <PrimaryButton label={`Preview Routine${Object.values(selectedDemo).some(Boolean) ? ` · ${Object.values(selectedDemo).filter(Boolean).length} selected` : ""}`} variant="ghost" onPress={previewSelectedDemo} disabled={!Object.values(selectedDemo).some(Boolean)} style={{ marginTop: spacing.md }} />
-      </View>
 
-      {showAddForm ? <View style={styles.form}>
+
+      {showAddForm ? <View style={styles.form} onLayout={(event) => { formY.current = event.nativeEvent.layout.y; }}>
         <Text style={styles.formTitle}>{editingProduct ? `When do you use ${displayName(editingProduct)}?` : newCategory === "other" ? "Add another product" : `Add a ${newCategory}`}</Text>
+        {!editingProduct ? <>
+          <Text style={styles.formLabel}>Product category</Text>
+          <View style={styles.slotRow}>{CORE_CATEGORIES.map((category) => <Pressable key={category.value} accessibilityRole="radio" accessibilityState={{ selected: newCategory === category.value }} onPress={() => { setNewCategory(category.value); if (!newSlot && category.value === "sunscreen") setNewSlot("AM"); setFormError(null); }} style={[styles.slotChoice, newCategory === category.value && styles.slotChoiceOn]}><Text style={[styles.slotText, newCategory === category.value && styles.slotTextOn]}>{category.label}</Text></Pressable>)}</View>
+        </> : null}
         {editingProduct ? null : <>
           <TextInput value={newName} onChangeText={setNewName} placeholder="Product name" placeholderTextColor={colors.inkSoft} style={styles.input} />
           {newCategory === "other" ? <TextInput value={otherCategory} onChangeText={setOtherCategory} placeholder="Category (e.g. toner, eye cream)" placeholderTextColor={colors.inkSoft} style={styles.input} /> : null}
@@ -256,7 +245,8 @@ export function AddExistingProductsScreen({ navigation }: any) {
         navigation.navigate(names.includes("ProductRecommendation") ? "ProductRecommendation" : "Recommendations");
       }} style={styles.recommendLink}><Text style={styles.recommendText}>Browse optional recommendations  ›</Text></Pressable> : null}
     </ScrollView>
-    <PrimaryButton label="Build My Routine" onPress={onContinue} style={styles.buildButton} disabled={loading || saving} />
+    <PrimaryButton label="Build My Routine" onPress={() => { Keyboard.dismiss(); onContinue(); }} style={styles.buildButton} disabled={loading || saving} />
+    </KeyboardAvoidingView>
   </SafeAreaView>;
 }
 
@@ -264,18 +254,17 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.sm },
   content: { paddingBottom: spacing.md }, title: { marginTop: spacing.xs, marginBottom: spacing.xs }, sub: { marginBottom: spacing.lg },
   backButton: { alignSelf: "flex-start", paddingVertical: spacing.xs, paddingRight: spacing.md, marginBottom: spacing.sm }, backText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 13 },
-  section: { marginTop: spacing.md, padding: spacing.md, borderRadius: radii.md, backgroundColor: "rgba(255,255,255,0.035)", borderWidth: 1, borderColor: colors.line },
+  section: { marginTop: spacing.md, padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.glass, borderWidth: 1, borderColor: colors.line },
   sectionDescription: { fontFamily: fonts.body, color: colors.inkSoft, fontSize: 11, lineHeight: 17, marginTop: spacing.xs, marginBottom: spacing.sm },
   categoryCell: { width: "100%", marginTop: spacing.xs },
   categoryCard: { minHeight: 112, borderRadius: radii.md, padding: spacing.md, backgroundColor: colors.dusk, borderWidth: 1, borderColor: colors.line }, pressed: { opacity: 0.78, transform: [{ scale: 0.985 }] },
   categoryTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, categoryIcon: { fontSize: 24 }, categoryStatus: { fontFamily: fonts.bodyMedium, color: colors.inkSoft, fontSize: 9 },
   categoryName: { fontFamily: fonts.bodyBold, color: colors.ink, fontSize: 14, marginTop: spacing.sm, textTransform: "capitalize" }, categoryHelp: { fontFamily: fonts.body, color: colors.inkSoft, fontSize: 10, marginTop: 2 },
-  otherButton: { minHeight: 45, borderRadius: radii.md, borderWidth: 1, borderColor: "rgba(227,197,138,0.35)", alignItems: "center", justifyContent: "center", marginTop: spacing.sm, backgroundColor: colors.glass },
+  otherButton: { minHeight: 45, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", marginTop: spacing.sm, backgroundColor: colors.glass },
   otherButtonText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 12 },
   emptyState: { alignItems: "center", paddingVertical: spacing.lg, marginTop: spacing.sm, borderRadius: radii.md, backgroundColor: colors.glass }, emptyTitle: { fontFamily: fonts.bodyBold, color: colors.ink, fontSize: 13, marginTop: spacing.sm }, emptyText: { fontFamily: fonts.body, color: colors.inkSoft, fontSize: 11, lineHeight: 17, textAlign: "center", paddingHorizontal: spacing.lg, marginTop: spacing.xs },
-  sectionLabel: { marginTop: spacing.lg, marginBottom: spacing.sm }, productRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 58, borderTopWidth: 1, borderTopColor: colors.line }, productIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(206,140,150,0.19)", alignItems: "center", justifyContent: "center" }, productIconText: { color: colors.gold, fontSize: 18 }, productInfo: { flex: 1 }, productName: { color: colors.ink, fontFamily: fonts.bodyMedium, fontSize: 12 }, productMeta: { color: colors.inkSoft, fontFamily: fonts.body, fontSize: 10, marginTop: 3, textTransform: "capitalize" }, editButton: { padding: spacing.sm }, editText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 11 },
-  demoRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line }, demoCheck: { width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: colors.inkSoft, alignItems: "center", justifyContent: "center", marginTop: 3 }, demoCheckOn: { backgroundColor: colors.gold, borderColor: colors.gold }, demoCheckMark: { color: colors.plum, fontFamily: fonts.bodyBold, fontSize: 14 }, demoCopy: { flex: 1 }, demoTiming: { flexDirection: "row", gap: spacing.xs, marginTop: spacing.sm }, demoTimingChoice: { minWidth: 48, alignItems: "center", paddingVertical: spacing.xs, paddingHorizontal: spacing.sm, borderRadius: radii.sm, backgroundColor: colors.dusk, borderWidth: 1, borderColor: colors.line }, demoTimingChoiceOn: { borderColor: colors.gold, backgroundColor: "rgba(227,197,138,0.12)" }, demoTimingText: { color: colors.inkSoft, fontFamily: fonts.bodyMedium, fontSize: 10 }, demoTimingTextOn: { color: colors.gold },
+  sectionLabel: { marginTop: spacing.lg, marginBottom: spacing.sm }, productRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, minHeight: 58, borderTopWidth: 1, borderTopColor: colors.line }, productIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: colors.accentTint, alignItems: "center", justifyContent: "center" }, productIconText: { color: colors.gold, fontSize: 18 }, productInfo: { flex: 1 }, productName: { color: colors.ink, fontFamily: fonts.bodyMedium, fontSize: 12 }, productMeta: { color: colors.inkSoft, fontFamily: fonts.body, fontSize: 10, marginTop: 3, textTransform: "capitalize" }, editButton: { padding: spacing.sm }, editText: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 11 },
   form: { backgroundColor: colors.glass, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, padding: spacing.md, marginTop: spacing.md }, formTitle: { color: colors.ink, fontFamily: fonts.bodyBold, fontSize: 14, marginBottom: spacing.md }, input: { color: colors.ink, borderWidth: 1, borderColor: colors.line, borderRadius: radii.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, marginBottom: spacing.sm, fontFamily: fonts.body, fontSize: 13 }, formLabel: { color: colors.inkSoft, fontFamily: fonts.bodyBold, fontSize: 11, marginBottom: spacing.xs },
-  slotRow: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.md }, slotChoice: { flex: 1, minHeight: 74, borderRadius: radii.sm, backgroundColor: colors.dusk, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", gap: 3 }, slotChoiceOn: { borderColor: colors.rose, backgroundColor: "rgba(206,140,150,0.17)" }, radio: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: colors.inkSoft, marginBottom: 2 }, radioOn: { borderWidth: 4, borderColor: colors.rose }, slotText: { color: colors.ink, fontFamily: fonts.bodyBold, fontSize: 11 }, slotTextOn: { color: colors.gold }, slotHelp: { color: colors.inkSoft, fontFamily: fonts.body, fontSize: 8 },
+  slotRow: { flexDirection: "row", gap: spacing.xs, marginBottom: spacing.md }, slotChoice: { flex: 1, minHeight: 74, borderRadius: radii.sm, backgroundColor: colors.dusk, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center", gap: 3 }, slotChoiceOn: { borderColor: colors.rose, backgroundColor: colors.accentTint }, radio: { width: 12, height: 12, borderRadius: 6, borderWidth: 1, borderColor: colors.inkSoft, marginBottom: 2 }, radioOn: { borderWidth: 4, borderColor: colors.rose }, slotText: { color: colors.ink, fontFamily: fonts.bodyBold, fontSize: 11 }, slotTextOn: { color: colors.gold }, slotHelp: { color: colors.inkSoft, fontFamily: fonts.body, fontSize: 8 },
   error: { color: colors.danger, fontFamily: fonts.body, fontSize: 11, lineHeight: 16, marginBottom: spacing.sm }, recommendLink: { paddingVertical: spacing.lg, alignItems: "center" }, recommendText: { fontFamily: fonts.bodyBold, color: colors.gold, fontSize: 12 }, buildButton: { marginTop: spacing.sm },
 });

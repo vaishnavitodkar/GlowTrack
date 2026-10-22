@@ -1,10 +1,9 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Alert } from "react-native";
+import { Text, StyleSheet, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing, type } from "@/theme/tokens";
 import { Pill } from "@/components/Pill";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { GlassCard } from "@/components/GlassCard";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 
@@ -41,13 +40,7 @@ export function CheckInScreen({ navigation }: any) {
         <Pill key={f.key} label={f.label} selected={feeling === f.key} onPress={() => setFeeling(f.key)} />
       ))}
 
-      <GlassCard style={{ marginTop: spacing.lg }}>
-        <Text style={styles.streakText}>🔥 7 days — best yet</Text>
-      </GlassCard>
-
-      {/* Hooks into the "photos" table + the private progress-photos storage
-          bucket once an image picker (expo-image-picker) is wired up. */}
-      <Pill label="📷 Add progress photo (optional)" onPress={() => {}} />
+      <Pill label="📷 Add progress photo (optional)" onPress={() => navigation.navigate("Tabs", { screen: "Progress" })} />
 
       <PrimaryButton label={saved ? "Saved" : "Save check-in"} onPress={onSave} loading={saving} disabled={!feeling || saved} style={{ marginTop: "auto" }} />
     </SafeAreaView>
@@ -58,5 +51,4 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.plum, padding: spacing.xl, paddingTop: spacing.xxl },
   title: { marginBottom: spacing.xs },
   sub: { marginBottom: spacing.lg },
-  streakText: { fontFamily: "PlusJakartaSans_700Bold", fontSize: 15, color: colors.ink },
 });
