@@ -37,7 +37,7 @@ export function AIAdvisorScreen({ navigation }: any) {
         {PROMPTS.map((prompt) => <Pressable key={prompt} accessibilityRole="button" disabled={loading} onPress={() => { void ask(prompt); }} style={styles.prompt}><Text style={styles.promptText}>{prompt}  ›</Text></Pressable>)}
         <TextInput value={input} onChangeText={setInput} multiline maxLength={4000} placeholder="Or write your own question…" placeholderTextColor={colors.inkSoft} style={styles.input} />
         <Pressable accessibilityRole="button" accessibilityLabel="Get personalized advice" disabled={!input.trim() || loading} onPress={() => { void ask(); }} style={[styles.askButton, (!input.trim() || loading) && styles.disabled]}>
-          {loading ? <ActivityIndicator color={colors.plum} /> : <Text style={styles.askText}>Get guidance</Text>}
+          {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.askText}>Get guidance</Text>}
         </Pressable>
         {error ? <View accessibilityRole="alert" style={styles.result}><Text style={styles.error}>{error}</Text><Pressable onPress={() => { void ask(input); }}><Text style={styles.doctorLink}>Try again</Text></Pressable></View> : null}
         {advice ? <View style={styles.result}>
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
   doctorLink: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 12, paddingVertical: spacing.sm }, section: { color: colors.gold, fontFamily: fonts.bodyBold, letterSpacing: 0.7, fontSize: 9, marginTop: spacing.lg, marginBottom: spacing.xs },
   prompt: { borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.glass, padding: spacing.md, marginTop: spacing.sm }, promptText: { color: colors.ink, fontFamily: fonts.bodyMedium, fontSize: 12 },
   input: { minHeight: 92, textAlignVertical: "top", color: colors.ink, fontFamily: fonts.body, fontSize: 13, borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, backgroundColor: colors.glass, padding: spacing.md, marginTop: spacing.md },
-  askButton: { alignItems: "center", justifyContent: "center", minHeight: 46, borderRadius: radii.md, backgroundColor: colors.gold, marginTop: spacing.md }, askText: { color: colors.plum, fontFamily: fonts.bodyBold, fontSize: 12 }, disabled: { opacity: 0.5 },
+  askButton: { alignItems: "center", justifyContent: "center", minHeight: 46, borderRadius: radii.md, backgroundColor: colors.gold, marginTop: spacing.md }, askText: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 12 }, disabled: { opacity: 0.5 },
   result: { borderWidth: 1, borderColor: colors.line, borderRadius: radii.md, padding: spacing.md, backgroundColor: colors.glass, marginTop: spacing.lg }, resultTitle: { color: colors.gold, fontFamily: fonts.bodyBold, fontSize: 11, marginBottom: spacing.sm }, answer: { color: colors.ink, fontFamily: fonts.body, fontSize: 13, lineHeight: 20 },
   citations: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: spacing.md, paddingTop: spacing.md, gap: spacing.xs }, citation: { color: colors.inkSoft, fontFamily: fonts.body, fontSize: 10 }, error: { color: colors.danger, fontFamily: fonts.body, fontSize: 12, lineHeight: 18 },
 });

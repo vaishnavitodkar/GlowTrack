@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   step: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm, paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.line },
   checkbox: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: colors.inkSoft, alignItems: "center", justifyContent: "center" },
   checkboxDone: { backgroundColor: colors.gold, borderColor: colors.gold },
-  checkmark: { color: colors.plum, fontFamily: fonts.bodyBold, fontSize: 16 },
+  checkmark: { color: colors.white, fontFamily: fonts.bodyBold, fontSize: 16 },
   stepCopy: { flex: 1 },
   stepLabel: { fontFamily: fonts.body, fontSize: 14, color: colors.ink },
   stepLabelDone: { color: colors.inkSoft, textDecorationLine: "line-through" },

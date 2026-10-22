@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from "react-native";
+import { colors } from "@/theme/tokens";
 
 export function AnimatedFlower({ size = 112 }: { size?: number }) {
   const rotation = useRef(new Animated.Value(0)).current;
@@ -39,7 +40,7 @@ export function AnimatedFlower({ size = 112 }: { size?: number }) {
 
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", justifyContent: "center" },
-  halo: { position: "absolute", backgroundColor: "rgba(144,103,178,0.12)", borderWidth: 1, borderColor: "rgba(144,103,178,0.15)" },
-  petal: { position: "absolute", top: "50%", left: "50%", backgroundColor: "#9067B2", opacity: 0.92 },
-  core: { position: "absolute", backgroundColor: "#F4D9A5", borderWidth: 4, borderColor: "#FBF9FC" },
+  halo: { position: "absolute", backgroundColor: colors.accentTint, borderWidth: 1, borderColor: colors.line },
+  petal: { position: "absolute", top: "50%", left: "50%", backgroundColor: colors.rose, opacity: 0.92 },
+  core: { position: "absolute", backgroundColor: colors.beige, borderWidth: 4, borderColor: colors.plum },
 });

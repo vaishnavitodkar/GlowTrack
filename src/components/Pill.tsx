@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
   },
   pillSelected: {
     borderColor: colors.rose,
-    backgroundColor: "rgba(206,140,150,0.14)",
+    backgroundColor: colors.accentTint,
   },
   label: {
     fontFamily: fonts.bodyMedium,

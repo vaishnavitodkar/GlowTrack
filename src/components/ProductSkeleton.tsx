@@ -31,9 +31,9 @@ export function ProductSkeleton({ count = 3 }: { count?: number }) {
 
 const styles = StyleSheet.create({
   card: { minHeight: 64, borderRadius: radii.md, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.glass, marginBottom: spacing.sm, padding: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md },
-  icon: { width: 38, height: 38, borderRadius: 12, backgroundColor: "rgba(206,140,150,0.32)" },
+  icon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.accentTint },
   copy: { flex: 1, gap: 7 },
-  line: { height: 8, borderRadius: 5, backgroundColor: "rgba(243,238,242,0.17)" },
+  line: { height: 8, borderRadius: 5, backgroundColor: colors.beige },
   category: { width: "35%" },
   title: { width: "70%", height: 10 },
   detail: { width: "48%", height: 6 },

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { NavigationContainer, DarkTheme } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,8 +44,8 @@ const AppStack = createNativeStackNavigator();
 const MainTabs = createBottomTabNavigator();
 
 const navTheme = {
-  ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: colors.plum, card: colors.dusk, border: colors.line },
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.plum, card: colors.dusk, border: colors.line, text: colors.ink, primary: colors.rose },
 };
 
 function AuthNavigator({ initialRouteName = "Welcome" }: { initialRouteName?: keyof AuthStackParamList }) {
